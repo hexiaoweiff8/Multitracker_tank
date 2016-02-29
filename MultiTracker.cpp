@@ -1,5 +1,4 @@
 #include "MultiTracker2.h"
-//using namespace cardemo;
 
 MultiTracker2::MultiTracker2()
 {
@@ -17,6 +16,7 @@ MultiTracker2::MultiTracker2()
 
 	init = true;
 	frameNo = 0;
+	obj = MultiTracker("KCF");
 }
 
 MultiTracker2::~MultiTracker2()
@@ -26,10 +26,11 @@ MultiTracker2::~MultiTracker2()
 void MultiTracker2::process(Mat &frame)
 {
 	frameNo++;
-	Mat gray;
+	Mat gray,frame_copy;
 	cvtColor(frame, gray, CV_RGB2GRAY);
+	frame_copy = frame.clone();
 
-	gTracker.tracking(frame);
+	gTracker.tracking(frame);//background differ
 	if (gTracker.flag)//rectangle not decrese
 	{
 		gTracker.drawTrackBox(frame);//draw the background result
@@ -39,6 +40,10 @@ void MultiTracker2::process(Mat &frame)
 	{
 		if (init) 
 		{
+			Rect2d res2d;
+			obj.clear();
+			//while (obj.objects.size())
+			//	obj.del(0);
 			for (size_t i = 0; i < gTracker.trackBox.size(); i++)
 			{
 				res[i] = boundingRect(Mat(gTracker.trackBox[i]));
@@ -47,19 +52,34 @@ void MultiTracker2::process(Mat &frame)
 				res[i].y = cvRound(res[i].y + res[i].height * 0.3);
 				res[i].width = cvRound(res[i].width * 0.4);
 				res[i].height = cvRound(res[i].height * 0.4);
-				sTracker[i].init(gray, res[i]);
+				res2d = res[i];
+				obj.add(frame_copy,res2d);
+/*				sTracker[i].init(gray, res[i])*/;
 			}
 			frameNo = 1;
 			init = false;
 		}
-		for (size_t i = 0; i < gTracker.trackBox.size(); i++)
-		{
-			sTracker[i].tracking(gray, res[i], frameNo);
-			res2[i].x = cvRound(res[i].x - res[i].width * 0.5);//correct to display
-			res2[i].y = cvRound(res[i].y - res[i].height * 0.5);
-			res2[i].width = cvRound(res[i].width * 2.0);
-			res2[i].height = cvRound(res[i].height * 2.0);
-			rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
-		}
+		//else
+		//{
+			obj.update(frame_copy);
+			for (size_t i = 0; i < obj.objects.size(); i++)
+			{
+				res2[i].x = cvRound(obj.objects[i].x - obj.objects[i].width * 0.5);//correct to display
+				res2[i].y = cvRound(obj.objects[i].y - obj.objects[i].height * 0.5);
+				res2[i].width = cvRound(obj.objects[i].width * 2.0);
+				res2[i].height = cvRound(obj.objects[i].height * 2.0);
+				rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+			}
+
+		//}
+		//for (size_t i = 0; i < gTracker.trackBox.size(); i++)
+		//{
+		//	sTracker[i].tracking(gray, res[i], frameNo);
+		//	res2[i].x = cvRound(res[i].x - res[i].width * 0.5);//correct to display
+		//	res2[i].y = cvRound(res[i].y - res[i].height * 0.5);
+		//	res2[i].width = cvRound(res[i].width * 2.0);
+		//	res2[i].height = cvRound(res[i].height * 2.0);
+		//	rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+		//}
 	}
 }
