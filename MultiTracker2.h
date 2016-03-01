@@ -13,7 +13,7 @@ class MultiTracker2
 public:
 	MultiTracker2();
 	~MultiTracker2();
-	void process(Mat &frame);
+	void process(Mat &frame,string alg);
 
 public:
 	MultiTracker obj;

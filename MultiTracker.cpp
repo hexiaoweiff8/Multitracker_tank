@@ -23,12 +23,17 @@ MultiTracker2::~MultiTracker2()
 {
 }
 
-void MultiTracker2::process(Mat &frame)
+void MultiTracker2::process(Mat &frame,string alg)
 {
 	frameNo++;
 	Mat gray,frame_copy;
 	cvtColor(frame, gray, CV_RGB2GRAY);
 	frame_copy = frame.clone();
+
+	int algorithm;
+	if (alg=="KCF")
+		algorithm = 2;
+	else algorithm = 1;
 
 	gTracker.tracking(frame);//background differ
 	if (gTracker.flag)//rectangle not decrese
@@ -41,9 +46,8 @@ void MultiTracker2::process(Mat &frame)
 		if (init) 
 		{
 			Rect2d res2d;
-			obj.clear();
-			//while (obj.objects.size())
-			//	obj.del(0);
+			if (algorithm==2)
+				obj.clear();
 			for (size_t i = 0; i < gTracker.trackBox.size(); i++)
 			{
 				res[i] = boundingRect(Mat(gTracker.trackBox[i]));
@@ -52,15 +56,21 @@ void MultiTracker2::process(Mat &frame)
 				res[i].y = cvRound(res[i].y + res[i].height * 0.3);
 				res[i].width = cvRound(res[i].width * 0.4);
 				res[i].height = cvRound(res[i].height * 0.4);
-				res2d = res[i];
-				obj.add(frame_copy,res2d);
-/*				sTracker[i].init(gray, res[i])*/;
+				if (algorithm==2)
+				{
+					res2d = res[i];
+					obj.add(frame_copy,res2d);
+				}
+				else if (algorithm == 1)
+					sTracker[i].init(gray, res[i]);
 			}
 			frameNo = 1;
 			init = false;
 		}
 		//else
 		//{
+		if (algorithm==2)
+		{
 			obj.update(frame_copy);
 			for (size_t i = 0; i < obj.objects.size(); i++)
 			{
@@ -68,18 +78,23 @@ void MultiTracker2::process(Mat &frame)
 				res2[i].y = cvRound(obj.objects[i].y - obj.objects[i].height * 0.5);
 				res2[i].width = cvRound(obj.objects[i].width * 2.0);
 				res2[i].height = cvRound(obj.objects[i].height * 2.0);
-				rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+				rectangle(frame, res2[i], Scalar(0, 255, 0), 2);
 			}
+		}
+		else if (algorithm==1)
+		{
+			for (size_t i = 0; i < gTracker.trackBox.size(); i++)
+			{
+			sTracker[i].tracking(gray, res[i], frameNo);
+			res2[i].x = cvRound(res[i].x - res[i].width * 0.5);//correct to display
+			res2[i].y = cvRound(res[i].y - res[i].height * 0.5);
+			res2[i].width = cvRound(res[i].width * 2.0);
+			res2[i].height = cvRound(res[i].height * 2.0);
+			rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+			}
+		}
 
-		//}
-		//for (size_t i = 0; i < gTracker.trackBox.size(); i++)
-		//{
-		//	sTracker[i].tracking(gray, res[i], frameNo);
-		//	res2[i].x = cvRound(res[i].x - res[i].width * 0.5);//correct to display
-		//	res2[i].y = cvRound(res[i].y - res[i].height * 0.5);
-		//	res2[i].width = cvRound(res[i].width * 2.0);
-		//	res2[i].height = cvRound(res[i].height * 2.0);
-		//	rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+
 		//}
 	}
 }
