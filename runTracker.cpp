@@ -22,8 +22,7 @@ int main(int argc, char** argv)
 	{
 		resize(frame, frame, Size(frame.cols/2,frame.rows/2));
 
-		mTracker.process(frame,"STC");
-		cout << "the KCF number" << mTracker.obj.objects.size() << endl;
+		mTracker.process(frame,"KCF");
 
 		imshow("video", frame);
 		if (waitKey(1)==27)

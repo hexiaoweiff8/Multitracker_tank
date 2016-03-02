@@ -72,6 +72,67 @@ void GMMTracker::roi_adjust(const Mat &img, Rect &rec)
 	//rec.width = (rec.x + rec.width < img.cols) ? rec.width : img.cols-1-rec.x;
 }
 
+Mat GMMTracker::id_Mark(const Mat &img){
+	Mat lab3c[3],mark,dst,lab,blue_inv;
+	cvtColor(img, lab, CV_BGR2Lab);
+
+	split(lab, lab3c);
+	Mat kernal = getStructuringElement(MORPH_ELLIPSE, Size(8, 8), Point(-1, -1));
+	threshold(lab3c[2], blue_inv, 128, 255, THRESH_BINARY);
+	threshold(lab3c[1], mark, 145, 255, THRESH_TOZERO);
+	mark &= blue_inv;
+
+	morphologyEx(mark,mark,MORPH_CLOSE,kernal);
+	GaussianBlur(mark, mark, Size(5, 5),2,2);
+	threshold(mark, mark, 0, 255, THRESH_BINARY | THRESH_OTSU);
+	vector<vector<Point> >contours;
+	vector<Vec4i>hierarchy;
+	findContours(mark, contours, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	vector<vector<cv::Point> >::const_iterator itc = contours.begin();
+	while (itc!=contours.end())
+	{
+		if (itc->size()<5)
+		{
+			itc = contours.erase(itc);
+		}
+		else ++itc;
+	}
+	vector<vector<Point> >contour_poly(contours.size());
+	vector<Rect2d> boundRect(contours.size());
+	//vector<Point2f> center(contours.size());
+	//vector<float> radius(contours.size());
+	for (size_t i = 0; i < contours.size(); i++)
+	{
+		approxPolyDP(contours[i], contour_poly[i], 3, true);
+		boundRect[i] = boundingRect(contour_poly[i]);
+	}
+
+	dst = Mat::zeros(img.size(), img.type());
+	for (size_t i = 0; i < contours.size(); i++){
+		drawContours(dst, contours, i, Scalar::all(255), 2, 8, hierarchy, 0, Point(0, 0));
+		rectangle(dst, boundRect[i].tl(), boundRect[i].br(), Scalar(255, 0, 0), 1, 8, 0);
+	}
+	//mark = 255-mark;
+	//adaptiveThreshold(mark, mark, 255, CV_ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 2);
+
+	//vector<Vec3f>circles;
+	//threshold(mark, mark, 80, 255, THRESH_BINARY);
+	//HoughCircles(mark, circles, CV_HOUGH_GRADIENT, 1, 10, 100, 30,1,30);
+	//dst = Mat::zeros(img.size(), img.type());
+	//cout << "circle.size:"<<circles.size() << endl;
+	//for (size_t i = 0; i < circles.size(); i++)
+	//{
+	//	Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+	//	int radius = circles[i][2];
+	//	circle(dst, center, radius, Scalar(255, 0, 0), 3, 8, 0);
+	//}
+
+	//threshold(lab3c[1], dst, -1, 255, THRESH_TOZERO|THRESH_OTSU);
+	//adaptiveThreshold(lab3c[1], dst, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 25,1);
+	//threshold(bgr[2], dst, 128, 255, THRESH_BINARY);
+	return dst;
+}
+
 vector< vector<Point> > GMMTracker::tracking(const Mat &src)
 {
 	//blur(src, src, cv::Size(5,5));

@@ -36,6 +36,7 @@ void MultiTracker2::process(Mat &frame,string alg)
 	else algorithm = 1;
 
 	gTracker.tracking(frame);//background differ
+	imshow("id_mark", gTracker.id_Mark(frame));
 	if (gTracker.flag)//rectangle not decrese
 	{
 		gTracker.drawTrackBox(frame);//draw the background result
@@ -67,8 +68,7 @@ void MultiTracker2::process(Mat &frame,string alg)
 			frameNo = 1;
 			init = false;
 		}
-		//else
-		//{
+
 		if (algorithm==2)
 		{
 			obj.update(frame_copy);
@@ -95,6 +95,5 @@ void MultiTracker2::process(Mat &frame,string alg)
 		}
 
 
-		//}
 	}
 }
