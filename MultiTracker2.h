@@ -5,15 +5,18 @@
 
 #include "GMMTracker.h"
 #include "STCTracker.h"
+#include <tracker.hpp>
+#include <tldDataset.hpp>
 
 class MultiTracker2
 {
 public:
 	MultiTracker2();
 	~MultiTracker2();
-	void process(Mat &frame);
+	void process(Mat &frame,string alg);
 
 public:
+	MultiTracker obj;
 	GMMTracker gTracker;
 	STCTracker sTracker[5];//circle to track
 	Rect res[5];//stc detect consequnce

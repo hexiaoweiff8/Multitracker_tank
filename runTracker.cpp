@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 	{
 		resize(frame, frame, Size(frame.cols/2,frame.rows/2));
 
-		mTracker.process(frame);
+		mTracker.process(frame,"KCF");
 
 		imshow("video", frame);
 		if (waitKey(1)==27)

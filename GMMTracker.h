@@ -16,6 +16,7 @@ public:
 	void refineSegments(const Mat& src, const Mat& mask, Mat& dst);
 	void roi_adjust(const Mat &img, Rect &rec);
 	vector< vector<Point> > tracking(const Mat &img);
+	Mat id_Mark(const Mat &img);
 	void drawTrackBox(Mat &img);
 	void help();
 
