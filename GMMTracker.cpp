@@ -29,7 +29,7 @@ void GMMTracker::refineSegments(const Mat& img, const Mat& mask, Mat& dst)
 	Mat kernal = getStructuringElement(MORPH_RECT, Size(5,5));
 	erode(temp, temp, kernal, Point(-1, -1), 3);
 	dilate(temp, temp, kernal, Point(-1, -1), 3);
-	imshow("fg", temp);
+	//imshow("fg", temp);
 	vector< vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours( temp, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);

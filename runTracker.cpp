@@ -4,7 +4,8 @@
 int main(int argc, char** argv)
 {
 	//string videoFile = "F:/data/³µÁ¾Êä×ª/2CARS_RLFRLT.avi";
-	string videoFile = "e:\\resources\\tank\\cam4\\2CARS_RLFRLT.avi";
+	//string videoFile = "e:\\resources\\tank\\cam4\\2CARS_RLFRLT.avi";
+	string videoFile = "e:\\cam4\\2CARS_RLFRLT.avi";
 	VideoCapture capture;
 	capture.open(videoFile);
 	if (!capture.isOpened())
@@ -22,7 +23,8 @@ int main(int argc, char** argv)
 	{
 		resize(frame, frame, Size(frame.cols/2,frame.rows/2));
 
-		mTracker.process(frame,"KCF");
+		std::vector<cv::RotatedRect> res = mTracker.process(frame,"STC");
+		std::cout << res.size() << std::endl;
 
 		imshow("video", frame);
 		if (waitKey(1)==27)

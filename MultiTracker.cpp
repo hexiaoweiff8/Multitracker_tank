@@ -16,15 +16,16 @@ MultiTracker2::MultiTracker2()
 
 	init = true;
 	frameNo = 0;
-	obj = MultiTracker("KCF");
+	//obj = MultiTracker("KCF");
 }
 
 MultiTracker2::~MultiTracker2()
 {
 }
 
-void MultiTracker2::process(Mat &frame,string alg)
+std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 {
+	std::vector<cv::RotatedRect> rRects;
 	frameNo++;
 	Mat gray,frame_copy;
 	cvtColor(frame, gray, CV_RGB2GRAY);
@@ -40,6 +41,8 @@ void MultiTracker2::process(Mat &frame,string alg)
 	if (gTracker.flag)//rectangle not decrese
 	{
 		gTracker.drawTrackBox(frame);//draw the background result
+		for (size_t i = 0; i < gTracker.trackBox.size(); i++)
+			rRects.push_back(cv::minAreaRect(cv::Mat(gTracker.trackBox[i])));
 		init = true;
 	}
 	else//rec decrease
@@ -47,8 +50,8 @@ void MultiTracker2::process(Mat &frame,string alg)
 		if (init) 
 		{
 			Rect2d res2d;
-			if (algorithm==2)
-				obj.clear();
+			//if (algorithm==2)
+				//obj.clear();
 			for (size_t i = 0; i < gTracker.trackBox.size(); i++)
 			{
 				res[i] = boundingRect(Mat(gTracker.trackBox[i]));
@@ -60,7 +63,7 @@ void MultiTracker2::process(Mat &frame,string alg)
 				if (algorithm==2)
 				{
 					res2d = res[i];
-					obj.add(frame_copy,res2d);
+					//obj.add(frame_copy,res2d);
 				}
 				else if (algorithm == 1)
 					sTracker[i].init(gray, res[i]);
@@ -71,15 +74,15 @@ void MultiTracker2::process(Mat &frame,string alg)
 
 		if (algorithm==2)
 		{
-			obj.update(frame_copy);
-			for (size_t i = 0; i < obj.objects.size(); i++)
-			{
-				res2[i].x = cvRound(obj.objects[i].x - obj.objects[i].width * 0.5);//correct to display
-				res2[i].y = cvRound(obj.objects[i].y - obj.objects[i].height * 0.5);
-				res2[i].width = cvRound(obj.objects[i].width * 2.0);
-				res2[i].height = cvRound(obj.objects[i].height * 2.0);
-				rectangle(frame, res2[i], Scalar(0, 255, 0), 2);
-			}
+			//obj.update(frame_copy);
+			//for (size_t i = 0; i < obj.objects.size(); i++)
+			//{
+			//	res2[i].x = cvRound(obj.objects[i].x - obj.objects[i].width * 0.5);//correct to display
+			//	res2[i].y = cvRound(obj.objects[i].y - obj.objects[i].height * 0.5);
+			//	res2[i].width = cvRound(obj.objects[i].width * 2.0);
+			//	res2[i].height = cvRound(obj.objects[i].height * 2.0);
+			//	rectangle(frame, res2[i], Scalar(0, 255, 0), 2);
+			//}
 		}
 		else if (algorithm==1)
 		{
@@ -91,9 +94,14 @@ void MultiTracker2::process(Mat &frame,string alg)
 			res2[i].width = cvRound(res[i].width * 2.0);
 			res2[i].height = cvRound(res[i].height * 2.0);
 			rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+			cv::RotatedRect tmp;
+			tmp.angle = 0;
+			tmp.center = (res2[i].tl() + res2[i].br()) / 2;
+			tmp.size.width = res2[i].width;
+			tmp.size.height = res2[i].height;
+			rRects.push_back(tmp);
 			}
 		}
-
-
 	}
+	return rRects;
 }
