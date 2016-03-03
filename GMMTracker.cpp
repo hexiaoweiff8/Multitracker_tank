@@ -88,7 +88,7 @@ Mat GMMTracker::id_Mark(const Mat &img){
 	vector<vector<Point> >contours;
 	vector<Vec4i>hierarchy;
 	findContours(mark, contours, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-	vector<vector<cv::Point> >::const_iterator itc = contours.begin();
+	vector<vector<cv::Point> >::iterator itc = contours.begin();
 	while (itc!=contours.end())
 	{
 		if (itc->size()<5)
@@ -98,20 +98,21 @@ Mat GMMTracker::id_Mark(const Mat &img){
 		else ++itc;
 	}
 	vector<vector<Point> >contour_poly(contours.size());
-	vector<Rect2d> boundRect(contours.size());
+	vector<RotatedRect> boundRect(contours.size());
 	//vector<Point2f> center(contours.size());
 	//vector<float> radius(contours.size());
 	for (size_t i = 0; i < contours.size(); i++)
 	{
-		approxPolyDP(contours[i], contour_poly[i], 3, true);
-		boundRect[i] = boundingRect(contour_poly[i]);
+		//approxPolyDP(contours[i], contour_poly[i], 3, true);
+		boundRect[i] = minAreaRect(Mat(contours[i]));
 	}
 
 	dst = Mat::zeros(img.size(), img.type());
-	for (size_t i = 0; i < contours.size(); i++){
-		drawContours(dst, contours, i, Scalar::all(255), 2, 8, hierarchy, 0, Point(0, 0));
-		rectangle(dst, boundRect[i].tl(), boundRect[i].br(), Scalar(255, 0, 0), 1, 8, 0);
-	}
+	//for (size_t i = 0; i < contours.size(); i++){
+	//	drawContours(dst, contours, i, Scalar::all(255), 2, 8, hierarchy, 0, Point(0, 0));
+	//	rectangle(dst, boundRect[i].tl(), boundRect[i].br(), Scalar(255, 0, 0), 1, 8, 0);
+	//}
+
 	//mark = 255-mark;
 	//adaptiveThreshold(mark, mark, 255, CV_ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 2);
 
