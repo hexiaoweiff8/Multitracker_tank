@@ -243,7 +243,8 @@ void STCTracker::tracking(const Mat gray, Rect &trackBox,int _frameNum)
 	cxtRegion.x = center.x - cxtRegion.width * 0.5;
 	cxtRegion.y = center.y - cxtRegion.height * 0.5;
 	//cxtRegion &= Rect(0, 0, gray.cols, gray.rows);
-	printf("trackBox= x:%d y:%d h:%d w:%d\n", trackBox.x, trackBox.y, trackBox.height, trackBox.width);
+
+	//printf("trackBox= x:%d y:%d h:%d w:%d\n", trackBox.x, trackBox.y, trackBox.height, trackBox.width);
 	getCxtPriorPosteriorModel(gray, cxtRegion);
 	learnSTCModel();
 }

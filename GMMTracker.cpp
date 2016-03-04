@@ -22,14 +22,15 @@ void GMMTracker::refineSegments(const Mat& img, const Mat& mask, Mat& dst)
 {
 	int niters = 3;
 	Mat temp;
+	Mat kernal = getStructuringElement(MORPH_RECT, Size(5,5));
+	//morphologyEx(mask, temp, MORPH_OPEN, kernal, Point(-1, -1), 1);
 	dilate(mask, temp, Mat(), Point(-1,-1), niters);
 	erode(temp, temp, Mat(), Point(-1,-1), niters*2);
 	dilate(temp, temp, Mat(), Point(-1,-1), niters);
 	erode(temp, temp, Mat(), Point(-1,-1), 1);
-	Mat kernal = getStructuringElement(MORPH_RECT, Size(5,5));
-	erode(temp, temp, kernal, Point(-1, -1), 3);
-	dilate(temp, temp, kernal, Point(-1, -1), 3);
-	//imshow("fg", temp);
+
+	erode(temp, temp, kernal, Point(-1, -1), 5);
+	dilate(temp, temp, kernal, Point(-1, -1), 5);
 	vector< vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours( temp, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
@@ -40,9 +41,14 @@ void GMMTracker::refineSegments(const Mat& img, const Mat& mask, Mat& dst)
 
 	Scalar color(255);
 	for(int idx = 0; idx >= 0; idx = hierarchy[idx][0] )
-	{
 		drawContours( dst, contours, idx, color, CV_FILLED, 8, hierarchy );
-	}
+	//for (int idx = 0; idx <contours.size(); idx++)
+	//{
+	//	if (cv::contourArea(contours[idx]) < 10000){
+	//		drawContours(dst, contours, idx, Scalar(0), CV_FILLED, 8, hierarchy);
+	//	}
+	//}
+	imshow("fg", dst);
 }
 
 void GMMTracker::roi_adjust(const Mat &img, Rect &rec)
@@ -72,32 +78,37 @@ void GMMTracker::roi_adjust(const Mat &img, Rect &rec)
 	//rec.width = (rec.x + rec.width < img.cols) ? rec.width : img.cols-1-rec.x;
 }
 
-Mat GMMTracker::id_Mark(const Mat &img){
-	Mat lab3c[3],mark,dst,lab,blue_inv;
+Mat GMMTracker::id_Mark(Mat &img){
+	Mat lab3c[3],mark,lab,blue_inv;
+	static Mat dst = Mat::zeros(img.size(), img.type());
+	static int frameNo = 0;
+
+	frameNo++;
 	cvtColor(img, lab, CV_BGR2Lab);
 
+	//identify the red
 	split(lab, lab3c);
-	Mat kernal = getStructuringElement(MORPH_ELLIPSE, Size(8, 8), Point(-1, -1));
+	Mat kernal = getStructuringElement(MORPH_RECT, Size(8, 8), Point(-1, -1));
 	threshold(lab3c[2], blue_inv, 128, 255, THRESH_BINARY);
 	threshold(lab3c[1], mark, 145, 255, THRESH_TOZERO);
 	mark &= blue_inv;
 
+	//draw the contour
 	morphologyEx(mark,mark,MORPH_CLOSE,kernal);
 	GaussianBlur(mark, mark, Size(5, 5),2,2);
 	threshold(mark, mark, 0, 255, THRESH_BINARY | THRESH_OTSU);
+	//imshow("mark", mark);
 	vector<vector<Point> >contours;
 	vector<Vec4i>hierarchy;
 	findContours(mark, contours, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	vector<vector<cv::Point> >::iterator itc = contours.begin();
 	while (itc!=contours.end())
 	{
-		if (itc->size()<5)
-		{
+		if (itc->size()<10)
 			itc = contours.erase(itc);
-		}
 		else ++itc;
 	}
-	vector<vector<Point> >contour_poly(contours.size());
+	//vector<vector<Point> >contour_poly(contours.size());
 	vector<RotatedRect> boundRect(contours.size());
 	//vector<Point2f> center(contours.size());
 	//vector<float> radius(contours.size());
@@ -105,9 +116,24 @@ Mat GMMTracker::id_Mark(const Mat &img){
 	{
 		//approxPolyDP(contours[i], contour_poly[i], 3, true);
 		boundRect[i] = minAreaRect(Mat(contours[i]));
-	}
+		cout << boundRect[i].size<< " ";
+		//if (boundRect[i].angle==0)
+		//	boundRect[i].angle = 90;
+		if (boundRect[i].size.width < boundRect[i].size.height)
+			cout << " " << (boundRect[i].angle);
+		else cout << " " << (boundRect[i].angle);
 
-	dst = Mat::zeros(img.size(), img.type());
+		Point2f box_Point[4] = { Point2f(0, 0), Point2f(0, 0), Point2f(0, 0), Point2f(0, 0) };
+		boundRect[i].points(box_Point);
+		Point ibox_Point[4] = { Point(0, 0), Point(0, 0), Point(0, 0), Point(0, 0) };
+		for (size_t idx = 0; idx < 4; idx++)
+			ibox_Point[idx] = box_Point[idx];
+		for (size_t idx = 0; idx < 4; idx++)
+			line(img, ibox_Point[idx], ibox_Point[(idx + 1) % 4], Scalar(0, 255, 0), 1, 8, 0);
+		//circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
+	}
+	cout << endl;
+	imshow("dst", dst);
 	//for (size_t i = 0; i < contours.size(); i++){
 	//	drawContours(dst, contours, i, Scalar::all(255), 2, 8, hierarchy, 0, Point(0, 0));
 	//	rectangle(dst, boundRect[i].tl(), boundRect[i].br(), Scalar(255, 0, 0), 1, 8, 0);
@@ -131,7 +157,7 @@ Mat GMMTracker::id_Mark(const Mat &img){
 	//threshold(lab3c[1], dst, -1, 255, THRESH_TOZERO|THRESH_OTSU);
 	//adaptiveThreshold(lab3c[1], dst, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 25,1);
 	//threshold(bgr[2], dst, 128, 255, THRESH_BINARY);
-	return dst;
+	return img;
 }
 
 vector< vector<Point> > GMMTracker::tracking(const Mat &src)

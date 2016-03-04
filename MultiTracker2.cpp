@@ -35,9 +35,16 @@ std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 	if (alg=="KCF")
 		algorithm = 2;
 	else algorithm = 1;
+	//Mat lab, lab3c[3];
+	//cvtColor(frame, lab, CV_BGR2Lab);
+	//split(lab, lab3c);
+	//lab3c[0] *= 2;
+	//merge(lab3c,3, lab);
+	//cvtColor(lab, frame, CV_Lab2BGR);
 
 	gTracker.tracking(frame);//background differ
-	imshow("id_mark", gTracker.id_Mark(frame));
+	gTracker.id_Mark(frame);
+	//imshow("id_mark", gTracker.id_Mark(frame));
 	if (gTracker.flag)//rectangle not decrese
 	{
 		gTracker.drawTrackBox(frame);//draw the background result
