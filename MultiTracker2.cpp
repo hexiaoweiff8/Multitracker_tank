@@ -1,4 +1,5 @@
 #include "MultiTracker2.h"
+#include "CarInfo.hpp"
 
 MultiTracker2::MultiTracker2()
 {
@@ -35,15 +36,9 @@ std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 	if (alg=="KCF")
 		algorithm = 2;
 	else algorithm = 1;
-	//Mat lab, lab3c[3];
-	//cvtColor(frame, lab, CV_BGR2Lab);
-	//split(lab, lab3c);
-	//lab3c[0] *= 2;
-	//merge(lab3c,3, lab);
-	//cvtColor(lab, frame, CV_Lab2BGR);
 
 	gTracker.tracking(frame);//background differ
-	gTracker.id_Mark(frame);
+	gTracker.id_Mark(frame,Rect(Point(0,0),Point(frame.cols,frame.rows)));
 	//imshow("id_mark", gTracker.id_Mark(frame));
 	if (gTracker.flag)//rectangle not decrese
 	{
@@ -68,10 +63,8 @@ std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 				res[i].width = cvRound(res[i].width * 0.4);
 				res[i].height = cvRound(res[i].height * 0.4);
 				if (algorithm==2)
-				{
 					res2d = res[i];
 					//obj.add(frame_copy,res2d);
-				}
 				else if (algorithm == 1)
 					sTracker[i].init(gray, res[i]);
 			}

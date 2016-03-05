@@ -48,7 +48,7 @@ void GMMTracker::refineSegments(const Mat& img, const Mat& mask, Mat& dst)
 	//		drawContours(dst, contours, idx, Scalar(0), CV_FILLED, 8, hierarchy);
 	//	}
 	//}
-	imshow("fg", dst);
+	//imshow("fg", dst);
 }
 
 void GMMTracker::roi_adjust(const Mat &img, Rect &rec)
@@ -78,10 +78,14 @@ void GMMTracker::roi_adjust(const Mat &img, Rect &rec)
 	//rec.width = (rec.x + rec.width < img.cols) ? rec.width : img.cols-1-rec.x;
 }
 
-Mat GMMTracker::id_Mark(Mat &img){
+vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 	Mat lab3c[3],mark,lab,blue_inv;
-	static Mat dst = Mat::zeros(img.size(), img.type());
+	static Mat dst = Mat::zeros(_img.size(), _img.type());
 	static int frameNo = 0;
+	Mat img = _img.clone();
+	Mat mask = Mat::zeros(_img.size(), _img.type());
+	rectangle(mask, roi, Scalar::all(255), CV_FILLED, 8, 0);
+	img &= mask;
 
 	frameNo++;
 	cvtColor(img, lab, CV_BGR2Lab);
@@ -115,13 +119,25 @@ Mat GMMTracker::id_Mark(Mat &img){
 	for (size_t i = 0; i < contours.size(); i++)
 	{
 		//approxPolyDP(contours[i], contour_poly[i], 3, true);
+		//cout << " " << minAreaRect(Mat(contours[i])).angle;
 		boundRect[i] = minAreaRect(Mat(contours[i]));
 		cout << boundRect[i].size<< " ";
 		//if (boundRect[i].angle==0)
 		//	boundRect[i].angle = 90;
-		if (boundRect[i].size.width < boundRect[i].size.height)
-			cout << " " << (boundRect[i].angle);
-		else cout << " " << (boundRect[i].angle);
+		if (1){
+		//if (boundRect[i].size.width < boundRect[i].size.height){
+			if (boundRect[i].angle>-45)
+			cout << " " << -boundRect[i].angle;
+			else cout << " " << 90-boundRect[i].angle;
+		}
+		else
+		{
+			if (boundRect[i].angle<-45)
+				cout << " " << -boundRect[i].angle;
+			else cout << " " << 90-boundRect[i].angle;
+		}
+		//	cout << " " << (boundRect[i].angle);
+		//else cout << " " << (boundRect[i].angle);
 
 		Point2f box_Point[4] = { Point2f(0, 0), Point2f(0, 0), Point2f(0, 0), Point2f(0, 0) };
 		boundRect[i].points(box_Point);
@@ -129,35 +145,21 @@ Mat GMMTracker::id_Mark(Mat &img){
 		for (size_t idx = 0; idx < 4; idx++)
 			ibox_Point[idx] = box_Point[idx];
 		for (size_t idx = 0; idx < 4; idx++)
-			line(img, ibox_Point[idx], ibox_Point[(idx + 1) % 4], Scalar(0, 255, 0), 1, 8, 0);
-		//circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
+			line(_img, ibox_Point[idx], ibox_Point[(idx + 1) % 4], Scalar(0, 255, i*255), 1, 8, 0);
+		//drawthe car location
+		circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
 	}
 	cout << endl;
 	imshow("dst", dst);
-	//for (size_t i = 0; i < contours.size(); i++){
-	//	drawContours(dst, contours, i, Scalar::all(255), 2, 8, hierarchy, 0, Point(0, 0));
-	//	rectangle(dst, boundRect[i].tl(), boundRect[i].br(), Scalar(255, 0, 0), 1, 8, 0);
-	//}
+	return boundRect;
+}
 
-	//mark = 255-mark;
-	//adaptiveThreshold(mark, mark, 255, CV_ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 2);
+vector<RotatedRect>GMMTracker::tracking(const Mat&img, const Rect &roi){
+	cv::Mat fg;
+	vector<RotatedRect>rRects;
 
-	//vector<Vec3f>circles;
-	//threshold(mark, mark, 80, 255, THRESH_BINARY);
-	//HoughCircles(mark, circles, CV_HOUGH_GRADIENT, 1, 10, 100, 30,1,30);
-	//dst = Mat::zeros(img.size(), img.type());
-	//cout << "circle.size:"<<circles.size() << endl;
-	//for (size_t i = 0; i < circles.size(); i++)
-	//{
-	//	Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-	//	int radius = circles[i][2];
-	//	circle(dst, center, radius, Scalar(255, 0, 0), 3, 8, 0);
-	//}
+	return rRects;
 
-	//threshold(lab3c[1], dst, -1, 255, THRESH_TOZERO|THRESH_OTSU);
-	//adaptiveThreshold(lab3c[1], dst, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 25,1);
-	//threshold(bgr[2], dst, 128, 255, THRESH_BINARY);
-	return img;
 }
 
 vector< vector<Point> > GMMTracker::tracking(const Mat &src)
