@@ -37,12 +37,12 @@ std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 		algorithm = 2;
 	else algorithm = 1;
 
-	gTracker.tracking(frame);//background differ
-	gTracker.id_Mark(frame,Rect(Point(0,0),Point(frame.cols,frame.rows)));
+	gTracker.tracking(frame_copy);//background differ
+	gTracker.id_Mark(frame_copy,Rect(Point(0,0),Point(frame.cols,frame.rows)));
 	//imshow("id_mark", gTracker.id_Mark(frame));
 	if (gTracker.flag)//rectangle not decrese
 	{
-		gTracker.drawTrackBox(frame);//draw the background result
+		gTracker.drawTrackBox(frame_copy);//draw the background result
 		for (size_t i = 0; i < gTracker.trackBox.size(); i++)
 			rRects.push_back(cv::minAreaRect(cv::Mat(gTracker.trackBox[i])));
 		init = true;
@@ -93,7 +93,7 @@ std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 			res2[i].y = cvRound(res[i].y - res[i].height * 0.5);
 			res2[i].width = cvRound(res[i].width * 2.0);
 			res2[i].height = cvRound(res[i].height * 2.0);
-			rectangle(frame, res2[i], Scalar(255, 0, 0), 2);
+			rectangle(frame_copy, res2[i], Scalar(255, 0, 0), 2);
 			cv::RotatedRect tmp;
 			tmp.angle = 0;
 			tmp.center = (res2[i].tl() + res2[i].br()) / 2;
@@ -103,5 +103,6 @@ std::vector<cv::RotatedRect> MultiTracker2::process(Mat &frame,string alg)
 			}
 		}
 	}
+	imshow("frame_c", frame_copy);
 	return rRects;
 }

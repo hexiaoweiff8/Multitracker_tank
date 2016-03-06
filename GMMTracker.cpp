@@ -124,18 +124,21 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 		cout << boundRect[i].size<< " ";
 		//if (boundRect[i].angle==0)
 		//	boundRect[i].angle = 90;
-		if (1){
-		//if (boundRect[i].size.width < boundRect[i].size.height){
-			if (boundRect[i].angle>-45)
-			cout << " " << -boundRect[i].angle;
-			else cout << " " << 90-boundRect[i].angle;
-		}
-		else
-		{
-			if (boundRect[i].angle<-45)
-				cout << " " << -boundRect[i].angle;
-			else cout << " " << 90-boundRect[i].angle;
-		}
+
+		//correct the angle
+		//if (1){
+		////if (boundRect[i].size.width < boundRect[i].size.height){
+		//	if (boundRect[i].angle>-45)
+		//	cout << " " << -boundRect[i].angle;
+		//	else cout << " " << 90-boundRect[i].angle;
+		//}
+		//else
+		//{
+		//	if (boundRect[i].angle<-45)
+		//		cout << " " << -boundRect[i].angle;
+		//	else cout << " " << 90-boundRect[i].angle;
+		//}
+
 		//	cout << " " << (boundRect[i].angle);
 		//else cout << " " << (boundRect[i].angle);
 
@@ -147,10 +150,11 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 		for (size_t idx = 0; idx < 4; idx++)
 			line(_img, ibox_Point[idx], ibox_Point[(idx + 1) % 4], Scalar(0, 255, i*255), 1, 8, 0);
 		//drawthe car location
-		circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
+		//circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
 	}
 	cout << endl;
-	imshow("dst", dst);
+	imshow("_img", _img);
+	//imshow("dst", dst);
 	return boundRect;
 }
 
@@ -160,6 +164,38 @@ vector<RotatedRect>GMMTracker::tracking(const Mat&img, const Rect &roi){
 
 	return rRects;
 
+}
+
+vector< vector<Point> > GMMTracker::findConnect(const Mat &src){
+	cv::Mat fg;
+	double learningRate = 0.0;
+	//mog2(src, fg, learningRate);
+	mog2->apply(src, fg, learningRate);
+
+	cv::Mat bg;
+	//mog2.getBackgroundImage(bg);
+
+	cv::Mat refined_fg;
+	refineSegments(src, fg, refined_fg);
+		//cv::imshow("refined_fg", refined_fg);
+
+	std::vector< std::vector<cv::Point> > contours;
+	std::vector<cv::Vec4i> hierarchy;
+	cv::findContours(refined_fg, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+	std::vector< std::vector<cv::Point> > res;
+	if (contours.size() > 0)
+	{
+		for (int idx = 0; idx >= 0; idx = hierarchy[idx][0])
+		{
+			//std::cout << cv::contourArea(contours[idx]) << std::endl;
+			if (cv::contourArea(contours[idx]) < 15000 || cv::contourArea(contours[idx]) >200000)
+				continue;
+			res.push_back(contours[idx]);
+		}
+	}
+	conNectBox = res;
+	return conNectBox;
 }
 
 vector< vector<Point> > GMMTracker::tracking(const Mat &src)
