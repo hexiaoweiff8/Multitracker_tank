@@ -47,6 +47,7 @@ namespace CarTracker {
 		mark_center = rRects[0].center;
 		vector<Point2f>tank_center;
 		vector<RotatedRect>rRects_tank;
+		//if the connected box.center in the rect
 		for (size_t i = 0; i < p->tracker.gTracker.conNectBox.size(); i++)
 		{
 			rRects_tank.push_back(minAreaRect(p->tracker.gTracker.conNectBox[i]));
@@ -59,6 +60,7 @@ namespace CarTracker {
 			cout << "regist failed! no tank fund" << endl;
 			return -2;
 		}
+		//find the most nearest to mark_center
 		sort(tank_center.begin(),tank_center.end(), compare);
 
         //printf("registerCar (%d,%d,%d,%d)\n", rect.x, rect.y, rect.width, rect.height);
@@ -71,7 +73,7 @@ namespace CarTracker {
 		carWh.relativeX = tank_center[0].x - car.locX;
 		carWh.relativeY = tank_center[0].y - car.locY;
 		carWh.dirHis.push_back(0);
-		p->_Cars.push_back(car);
+		//p->_Cars.push_back(car);
         p->cars.push_back(carWh);
 		//cout << "carWh.loc:" << carWh.locX<<endl<<endl<<endl;
 		cout << "carWh.relativeY" << carWh.relativeY<<endl << endl << endl;
@@ -79,12 +81,14 @@ namespace CarTracker {
         return 0;
     }
 	
-	Mat drawTrack(void* _h,Mat &src){
+	Mat drawTrack(void* _h,Mat &src,Mat &frmCp){
         _tracker* p = static_cast<_tracker*>(_h);
 		for (size_t i = 0; i < p->cars.size(); i++)
 		{
 			Point center = Point(cvRound(p->cars[i].locX), cvRound(p->cars[i].locY));
-			circle(src, center, 2, Scalar(255 * i, 255, 128*i), 1, 8, 0);
+			circle(src, center, 2, Scalar(255 * i, 255 , 64*i), 1, 8, 0);
+			if (!p->cars[i].mark_flag)
+				rectangle(frmCp, p->cars[i].rectRes, Scalar(255, 0, 0), 1, 8, 0);
 		}
 		imshow("track", src);
 		return src;
@@ -93,20 +97,25 @@ namespace CarTracker {
 	int distributeMark(vector<cv::RotatedRect> rRects,void* _h){
         _tracker* p = static_cast<_tracker*>(_h);
 		vector<RotatedRect>rect_neigh;
+		Mat frame_gray;
+		cvtColor(p->frame, frame_gray, CV_BGR2GRAY);
 		//correct the angle
 		for (size_t i = 0; i < rRects.size(); i++)
 		{
-			if (1){
-				//if (boundRect[i].size.width < boundRect[i].size.height){
-				if (rRects[i].angle > -45)
-					rRects[i].angle = -rRects[i].angle;
-				else rRects[i].angle = 90 - rRects[i].angle;
-			}
-			else
+			if (rRects[i].angle<0)
 			{
-				if (rRects[i].angle < -45)
-					rRects[i].angle = -rRects[i].angle;
-				else rRects[i].angle = 90 - rRects[i].angle;
+				if (1){
+					//if (boundRect[i].size.width < boundRect[i].size.height){
+					if (rRects[i].angle > -45)
+						rRects[i].angle = -rRects[i].angle;
+					else rRects[i].angle = 90 - rRects[i].angle;
+				}
+				else
+				{
+					if (rRects[i].angle < -45)
+						rRects[i].angle = -rRects[i].angle;
+					else rRects[i].angle = 90 - rRects[i].angle;
+				}
 			}
 		}
 
@@ -131,9 +140,32 @@ namespace CarTracker {
 				p->cars[i].locX = rect_neigh[0].center.x;
 				p->cars[i].locY = rect_neigh[0].center.y;
 				//need to change the angle here***
+				if (!p->cars[i].mark_flag)//frist gain the mark
+					p->cars[i].frameNo = 0;
 				p->cars[i].mark_flag = 1;
 			}
-			else p->cars[i].mark_flag = 0;
+			else{
+				if (p->cars[i].mark_flag)//first lost mark
+				{
+					p->cars[i].rectRes = Rect(p->cars[i].locX+p->cars[i].relativeX-30,
+						p->cars[i].locY+p->cars[i].relativeY-30,60,60);
+					//cout << rect << endl;
+					p->tracker.gTracker.roi_adjust(p->frame, p->cars[i].rectRes);
+					p->cars[i].stctracker.init(frame_gray, p->cars[i].rectRes);
+					p->cars[i].frameNo = 1;
+					p->cars[i].stctracker.tracking(frame_gray, p->cars[i].rectRes, p->cars[i].frameNo);
+					p->cars[i].mark_flag = 0;
+				}
+				else//lost marks for many frame
+				{
+					p->cars[i].frameNo++;
+					cout << p->cars[i].frameNo << endl;
+					p->cars[i].stctracker.tracking(frame_gray, p->cars[i].rectRes, p->cars[i].frameNo);
+					cout << p->cars[i].rectRes << endl;
+					p->cars[i].locX = p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2-p->cars[i].relativeX;
+					p->cars[i].locY = p->cars[i].rectRes.y + p->cars[i].rectRes.height/ 2-p->cars[i].relativeY;
+				}
+			}
 		}
 		return 0;
 	}
@@ -141,13 +173,14 @@ namespace CarTracker {
     int findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
         _tracker* p = static_cast<_tracker*>(_h);
 		Mat frmCp = frame.clone();
-		Mat track = Mat::zeros(frame.size(), frame.type());
+		static Mat track = Mat::zeros(frame.size(), frame.type());
 		p->frame = frame;
 		p->tracker.gTracker.findConnect(frmCp);
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
 		if (res.size()>0)
 			distributeMark(res,_h);
-		drawTrack(_h,track);
+		drawTrack(_h,track,frmCp);
+		imshow("frm", frmCp);
         //Mat &frame = frames[0];
         //std::vector<cv::RotatedRect> res = p->tracker.process(frame,"STC");
 

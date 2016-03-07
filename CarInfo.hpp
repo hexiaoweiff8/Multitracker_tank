@@ -21,8 +21,11 @@ struct LocInfo {
 struct LocInfoHis{
 	bool mark_flag = 1;
 	std::vector<double> dirHis;
-	double relativeX = 500;
+	double relativeX = 200;
 	double relativeY = 0;
+	int frameNo = 0;
+	STCTracker stctracker;
+	Rect rectRes;
 };
 
 struct CarAllInfo : public CarBaseInfo, public LocInfo {

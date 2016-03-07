@@ -81,13 +81,13 @@ void GMMTracker::roi_adjust(const Mat &img, Rect &rec)
 vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 	Mat lab3c[3],mark,lab,blue_inv;
 	static Mat dst = Mat::zeros(_img.size(), _img.type());
-	static int frameNo = 0;
+	//static int frameNo = 0;
 	Mat img = _img.clone();
 	Mat mask = Mat::zeros(_img.size(), _img.type());
 	rectangle(mask, roi, Scalar::all(255), CV_FILLED, 8, 0);
 	img &= mask;
 
-	frameNo++;
+	//frameNo++;
 	cvtColor(img, lab, CV_BGR2Lab);
 
 	//identify the red
@@ -153,7 +153,7 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 		//circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
 	}
 	cout << endl;
-	imshow("_img", _img);
+	//imshow("_img", _img);
 	//imshow("dst", dst);
 	return boundRect;
 }
