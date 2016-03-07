@@ -10,10 +10,6 @@ namespace CarTracker{
 struct CarBaseInfo {
     std::string type;
     std::string ID;
-	CarBaseInfo(std::string ty, std::string id){
-		type = ty; 
-		ID = id; 
-	}
 };
 
 struct LocInfo {
@@ -26,7 +22,7 @@ struct LocInfoHis{
 	bool mark_flag = 1;
 	std::vector<double> dirHis;
 	double relativeX = 500;
-	double relativeY = -500;
+	double relativeY = 0;
 };
 
 struct CarAllInfo : public CarBaseInfo, public LocInfo {

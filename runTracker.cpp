@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 
 	int key;
 	int carNum = 0;
-	vector<CarTracker::CarAllInfo>**out;
+	vector<CarTracker::CarAllInfo>**out = NULL;
 	while (capture.read(frame))
 	{
 		//resize(frame, frame, Size(frame.cols/2,frame.rows/2));
@@ -44,7 +44,10 @@ int main(int argc, char** argv)
 			waitKey(0);
 		else if (key == 13)
 		{
-			if (!CarTracker::registerCar(CarTracker::CarBaseInfo(to_string(carNum), to_string(carNum)),
+			CarTracker::CarBaseInfo cb;
+			cb.type = to_string(carNum);
+			cb.ID = to_string(carNum);
+			if (!CarTracker::registerCar(cb,
 				frame, Rect(Point(0, 0), Point(frame.cols/4, frame.rows)), ip))
 				carNum++;
 		}
