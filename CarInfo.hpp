@@ -29,12 +29,12 @@ struct LocInfoHis{
 };
 
 struct CarAllInfo : public CarBaseInfo, public LocInfo {
-    //CarAllInfo() {}
+    CarAllInfo() {}
     CarAllInfo(const CarBaseInfo& _cbi) : CarBaseInfo(_cbi) {}
 };
 
 struct CarwithHistory :public CarAllInfo,public LocInfoHis{
-	//CarwithHistory(){}
+	CarwithHistory(){}
 	CarwithHistory(const CarAllInfo& _cai) :CarAllInfo(_cai){}
 };
 
@@ -44,13 +44,18 @@ struct _tracker{
 	cv::Mat                frame;
 	MultiTracker2          tracker;
 	//Tracker                 tracker;
+	_tracker() :cars(std::vector<CarwithHistory>()), 
+				_Cars(std::vector<CarAllInfo>()),
+				frame(cv::Mat()),
+				tracker(MultiTracker2())
+	{}
 };
 
 typedef void* algHandle;
 
 algHandle trackerInit();
 int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, algHandle _h);
-int findCar(cv::Mat& inputImages, std::vector<CarAllInfo>** out, algHandle _h);
+Mat findCar(cv::Mat& inputImages, std::vector<CarAllInfo> &out, algHandle _h);
 void trackerDestroy(algHandle _h);
 //int distributeMark(cv::RotatedRect rRects,void* _h);
 

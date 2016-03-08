@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 
 	int ex = static_cast<int>(capture.get(CV_CAP_PROP_FOURCC));
 	vw.open("res.avi", ex , capture.get(CV_CAP_PROP_FPS), 
-		Size(capture.get(CV_CAP_PROP_FRAME_WIDTH),frame.size().height));
+		Size(capture.get(CV_CAP_PROP_FRAME_WIDTH),frame.size().height*2));
 
 	//MultiTracker2 mTracker;
 
@@ -30,13 +30,12 @@ int main(int argc, char** argv)
 
 	int key;
 	int carNum = 0;
-	vector<CarTracker::CarAllInfo>**out = NULL;
+	vector<CarTracker::CarAllInfo> out;
 	while (capture.read(frame))
 	{
 		//resize(frame, frame, Size(frame.cols/2,frame.rows/2));
 		//CarTracker::_tracker*p = static_cast<CarTracker::_tracker*>(ip);
 		//std::vector<cv::RotatedRect> res = p->tracker.process(frame,"STC");
-
 		key = waitKey(1);
 		if (key == 27)
 			break;
@@ -51,13 +50,14 @@ int main(int argc, char** argv)
 				frame, Rect(Point(0, 0), Point(frame.cols/4, frame.rows)), ip))
 				carNum++;
 		}
-		CarTracker::findCar(frame, out, ip);
+		Mat dst = CarTracker::findCar(frame, out, ip);
 		//std::vector<cv::RotatedRect> res = mTracker.process(frame,"STC");
 		//std::cout << res.size() << std::endl;
 
-		vw << frame;
+		vw << dst;
 	}
 	waitKey(0);
+
 	CarTracker::trackerDestroy(ip);
 
 	

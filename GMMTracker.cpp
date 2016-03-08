@@ -121,7 +121,7 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 		//approxPolyDP(contours[i], contour_poly[i], 3, true);
 		//cout << " " << minAreaRect(Mat(contours[i])).angle;
 		boundRect[i] = minAreaRect(Mat(contours[i]));
-		cout << boundRect[i].size<< " ";
+		//cout << boundRect[i].size<< " ";
 		//if (boundRect[i].angle==0)
 		//	boundRect[i].angle = 90;
 
@@ -152,7 +152,7 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 		//drawthe car location
 		//circle(dst, boundRect[i].center, 2, Scalar(255, frameNo % 255, frameNo%255), 1, 8, 0);
 	}
-	cout << endl;
+	//cout << endl;
 	//imshow("_img", _img);
 	//imshow("dst", dst);
 	return boundRect;

@@ -7,5 +7,5 @@
 实际使用中需要进行更改id_mark中的代码,tracker.cpp 中的distrube
 
 TODO:
-angle
-STC的加入
+angle: -0 <0??? 是否需要角度变化是否需要判定？
+Done:STC的加入
