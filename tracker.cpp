@@ -93,6 +93,24 @@ namespace CarTracker {
         //p->tracker.enterCar();
         return 0;
     }
+
+	int locatChange(int carNo,double x, double y, void*_h){
+        _tracker* p = static_cast<_tracker*>(_h);
+		double lx = p->cars[carNo].locX;
+		double ly = p->cars[carNo].locY;
+		double dis = sqrtf(float((x - lx)*(x - lx)+(y - ly)*(y - ly)));
+		if (dis>30)
+		{
+			p->cars[carNo].locX = lx + (x - lx) * 30 / dis;
+			p->cars[carNo].locY = ly + (y - ly) * 30 / dis;
+		}
+		else
+		{
+			p->cars[carNo].locX = x;
+			p->cars[carNo].locY = y;
+		}
+		return 0;
+	}
 	
 	Mat drawTrack(void* _h,Mat &src,Mat &frmCp){
         _tracker* p = static_cast<_tracker*>(_h);
@@ -108,6 +126,38 @@ namespace CarTracker {
 		return src;
 	}
 
+	int distributeConnect(vector <vector<Point>> trackBox,void*_h){
+		_tracker*p = static_cast<_tracker*>(_h);
+		vector<RotatedRect>rRects;
+		for (size_t i = 0; i < trackBox.size(); i++)
+			rRects.push_back(minAreaRect(trackBox[i]));
+		if (rRects.size() < p->cars.size()) return -1;
+		for (size_t i = 0; i < rRects.size(); i++)
+		{
+			rRects[i].angle = int(rRects[i].angle);
+			if (rRects[i].angle<0)
+			{
+				//if (1){
+				if (rRects[i].size.width<rRects[i].size.height)
+					rRects[i].angle = 90 - rRects[i].angle;
+				else rRects[i].angle = -rRects[i].angle;
+			}
+		}
+
+		for (size_t i = 0; i < p->cars.size(); i++)
+		{
+			//choose the nearest
+			mark_center = Point2f(float(p->cars[i].locX), float(p->cars[i].locY));
+			sort(rRects.begin(), rRects.end(), comp2Rotat);
+			//need to change the angle here***
+			if (anglediff(int(rRects[0].angle), int(p->cars[i].dir))<
+				anglediff(int(rRects[0].angle) + 180, int(p->cars[i].dir)))
+				p->cars[i].dir = rRects[0].angle;
+			else p->cars[i].dir = int(rRects[0].angle + 180) % 360;
+		}
+		return 0;
+	}
+
 	int distributeMark(vector<cv::RotatedRect> rRects,void* _h){
         _tracker* p = static_cast<_tracker*>(_h);
 		vector<RotatedRect>rect_neigh;
@@ -121,23 +171,15 @@ namespace CarTracker {
 			if (rRects[i].angle<0)
 			{
 				//if (1){
-				if (rRects[i].size.width<rRects[i].size.height){
-					if (rRects[i].angle > -45)
-						rRects[i].angle = -rRects[i].angle;
-					else rRects[i].angle = 90 - rRects[i].angle;
-				}
-				else
-				{
-					if (rRects[i].angle < -45)
-						rRects[i].angle = -rRects[i].angle;
-					else rRects[i].angle = 90 - rRects[i].angle;
-				}
+				if (rRects[i].size.width < rRects[i].size.height)
+					rRects[i].angle = -rRects[i].angle;
+				else rRects[i].angle = 90 - rRects[i].angle;
 			}
 		}
 
 		for (size_t i = 0; i < p->cars.size(); i++)
 		{
-			Rect neighborRect = Rect(p->cars[i].locX - 200, p->cars[i].locY - 100, 400, 200);
+			Rect neighborRect = Rect(int(p->cars[i].locX) - 200,int(p->cars[i].locY) - 100, 400, 200);
 			p->tracker.gTracker.roi_adjust(p->frame, neighborRect);
 
 			rect_neigh.clear();
@@ -151,15 +193,20 @@ namespace CarTracker {
 			//choose the nearest
 			if (rect_neigh.size()>0)
 			{ 
-				mark_center = Point2f(p->cars[i].locX, p->cars[i].locY);
+				mark_center = Point2f(float(p->cars[i].locX), float(p->cars[i].locY));
 				sort(rect_neigh.begin(), rect_neigh.end(), comp2Rotat);
-				p->cars[i].locX = rect_neigh[0].center.x;
-				p->cars[i].locY = rect_neigh[0].center.y;
+				locatChange(i, rect_neigh[0].center.x, rect_neigh[0].center.y, _h);
+				//p->cars[i].locX = rect_neigh[0].center.x;
+				//p->cars[i].locY = rect_neigh[0].center.y;
+
 				//need to change the angle here***
-				if (anglediff(rect_neigh[0].angle,int(p->cars[i].dir)),
-					anglediff(rect_neigh[0].angle+180,int(p->cars[i].dir)))
-					p->cars[i].dir = rect_neigh[0].angle;
-				else p->cars[i].dir = int(rect_neigh[0].angle + 180) % 360;
+				if (!p->tracker.gTracker.flag)
+				{
+					if (anglediff(int(rect_neigh[0].angle),int(p->cars[i].dir))<
+						anglediff(int(rect_neigh[0].angle)+180,int(p->cars[i].dir)))
+						p->cars[i].dir = rect_neigh[0].angle;
+					else p->cars[i].dir = int(rect_neigh[0].angle + 180) % 360;
+				}
 				if (!p->cars[i].mark_flag)//frist gain the mark
 					p->cars[i].frameNo = 0;
 				p->cars[i].mark_flag = 1;
@@ -167,13 +214,16 @@ namespace CarTracker {
 			else{
 				if (p->cars[i].mark_flag)//first lost mark
 				{
-					p->cars[i].rectRes = Rect(p->cars[i].locX+p->cars[i].relativeX-30,
-						p->cars[i].locY+p->cars[i].relativeY-30,60,60);
+					p->cars[i].rectRes = Rect(int(p->cars[i].locX+p->cars[i].relativeX-30),
+						int(p->cars[i].locY+p->cars[i].relativeY-30),60,60);
 					//cout << rect << endl;
+					//init the rect to track
 					p->tracker.gTracker.roi_adjust(p->frame, p->cars[i].rectRes);
 					p->cars[i].stctracker.init(frame_gray, p->cars[i].rectRes);
 					p->cars[i].frameNo = 1;
 					p->cars[i].stctracker.tracking(frame_gray, p->cars[i].rectRes, p->cars[i].frameNo);
+					//locatChange(i, p->cars[i].rectRes.x+p->cars[i].rectRes.width / 2 - p->cars[i].relativeX,
+						//p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - p->cars[i].relativeY,_h);
 					p->cars[i].mark_flag = 0;
 				}
 				else//lost marks for many frame
@@ -182,8 +232,8 @@ namespace CarTracker {
 					cout << p->cars[i].frameNo << endl;
 					p->cars[i].stctracker.tracking(frame_gray, p->cars[i].rectRes, p->cars[i].frameNo);
 					//cout << p->cars[i].rectRes << endl;
-					p->cars[i].locX = p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2-p->cars[i].relativeX;
-					p->cars[i].locY = p->cars[i].rectRes.y + p->cars[i].rectRes.height/ 2-p->cars[i].relativeY;
+					locatChange(i, p->cars[i].rectRes.x+p->cars[i].rectRes.width / 2 - p->cars[i].relativeX,
+						p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - p->cars[i].relativeY,_h);
 				}
 			}
 		}
@@ -200,8 +250,13 @@ namespace CarTracker {
 		const Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
 		const Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
-		p->tracker.gTracker.findConnect(frmCp);
+		p->tracker.gTracker.findConnect(frmCp,p->cars.size());
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
+		if (p->tracker.gTracker.flag)
+		{
+			distributeConnect(p->tracker.gTracker.trackBox,_h);
+			p->tracker.gTracker.drawTrackBox(frmCp);
+		}
 		if (res.size()>0)
 			distributeMark(res,_h);
 		drawTrack(_h,track,frmCp);

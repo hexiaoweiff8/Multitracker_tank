@@ -166,7 +166,7 @@ vector<RotatedRect>GMMTracker::tracking(const Mat&img, const Rect &roi){
 
 }
 
-vector< vector<Point> > GMMTracker::findConnect(const Mat &src){
+vector< vector<Point> > GMMTracker::findConnect(const Mat &src,int lastObjnum){
 	cv::Mat fg;
 	double learningRate = 0.0;
 	//mog2(src, fg, learningRate);
@@ -195,6 +195,13 @@ vector< vector<Point> > GMMTracker::findConnect(const Mat &src){
 		}
 	}
 	conNectBox = res;
+	if (res.size() >= lastObjnum)//next>=last one rec increase
+	{
+		flag = true;
+		trackBox = res;
+	}
+	else //rec decrease
+		flag = false;
 	return conNectBox;
 }
 
