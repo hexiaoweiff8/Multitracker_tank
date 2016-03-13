@@ -5,6 +5,7 @@
 
 #include "GMMTracker.h"
 #include "STCTracker.h"
+#include "CarInfo.hpp"
 
 class MultiTracker2
 {
@@ -22,5 +23,44 @@ public:
 	bool init;//the signal of stc
 	long frameNo;//current frame number
 };
+
+namespace CarTracker{
+
+struct LocInfoHis{
+	bool mark_flag = 1;
+	std::vector<double> dirHis;
+	double relativeX = 200;
+	double relativeY = 0;
+	int frameNo = 0;
+	STCTracker stctracker;
+	Rect rectRes;
+};
+
+struct CarwithHistory :public CarAllInfo,public LocInfoHis{
+	CarwithHistory(){}
+	CarwithHistory(const CarAllInfo& _cai) :CarAllInfo(_cai){}
+};
+
+struct _tracker{
+	std::vector<CarwithHistory> cars;
+	std::vector<CarAllInfo> _Cars;
+	cv::Mat                frame;
+	MultiTracker2          tracker;
+	//Tracker                 tracker;
+	_tracker() :cars(std::vector<CarwithHistory>()), 
+				_Cars(std::vector<CarAllInfo>()),
+				frame(cv::Mat()),
+				tracker(MultiTracker2())
+	{}
+};
+
+typedef void* algHandle;
+
+algHandle trackerInit();
+int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, algHandle _h);
+int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h);
+void trackerDestroy(algHandle _h);
+
+} // CarTracker
 
 #endif

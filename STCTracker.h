@@ -3,7 +3,7 @@
 #ifndef _STCTRACKER_H
 #define _STCTRACKER_H
 
-#include <opencv2\opencv.hpp>
+#include <opencv2/opencv.hpp>
 
 using namespace cv;
 using namespace std;

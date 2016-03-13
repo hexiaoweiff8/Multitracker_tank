@@ -30,12 +30,14 @@ int main(int argc, char** argv)
 
 	int key;
 	int carNum = 0;
-	vector<CarTracker::CarAllInfo> out;
+	vector<CarTracker::CarAllInfo> *out;
 	while (capture.read(frame))
 	{
 		//resize(frame, frame, Size(frame.cols/2,frame.rows/2));
 		//CarTracker::_tracker*p = static_cast<CarTracker::_tracker*>(ip);
 		//std::vector<cv::RotatedRect> res = p->tracker.process(frame,"STC");
+		vector<Mat>frames;
+		frames.push_back(frame);
 		key = waitKey(1);
 		if (key == 27)
 			break;
@@ -50,11 +52,11 @@ int main(int argc, char** argv)
 				frame, Rect(Point(0, 0), Point(frame.cols/4, frame.rows)), ip))
 				carNum++;
 		}
-		Mat dst = CarTracker::findCar(frame, out, ip);
+		CarTracker::findCar(frames, &out, ip);
 		//std::vector<cv::RotatedRect> res = mTracker.process(frame,"STC");
 		//std::cout << res.size() << std::endl;
 
-		vw << dst;
+		//vw << dst;
 	}
 	waitKey(0);
 

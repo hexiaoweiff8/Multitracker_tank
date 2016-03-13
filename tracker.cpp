@@ -1,4 +1,4 @@
-#include "CarInfo.hpp"
+//#include "tracker.h"
 //#include "Tracker3.hpp"
 #include "MultiTracker2.h"
 //#include "GMMTracker.h"
@@ -96,6 +96,10 @@ namespace CarTracker {
 
 	int locatChange(int carNo,double x, double y, void*_h){
         _tracker* p = static_cast<_tracker*>(_h);
+		if (x < 0) x = 0;
+		else if (x>p->frame.cols) x = p->frame.cols;
+		if (y < 0) y = 0;
+		else if (y>p->frame.rows) y = p->frame.rows;
 		double lx = p->cars[carNo].locX;
 		double ly = p->cars[carNo].locY;
 		double dis = sqrtf(float((x - lx)*(x - lx)+(y - ly)*(y - ly)));
@@ -117,16 +121,17 @@ namespace CarTracker {
 		for (size_t i = 0; i < p->cars.size(); i++)
 		{
 			Point center = Point(cvRound(p->cars[i].locX), cvRound(p->cars[i].locY));
-			circle(src, center, 1, Scalar(255 * i, frameNo%255 , 128), 1, 8, 0);
+			circle(src, center, 1, Scalar((64 * i)%255, (127*i)%255 , 128), 1, 8, 0);
 			if (!p->cars[i].mark_flag)
 				rectangle(frmCp, p->cars[i].rectRes, Scalar(255, 0, 0), 1, 8, 0);
 			cout << p->cars[i].dir << " ";
 		}
-		cout << endl;
+        if(p->cars.size())
+		    cout << endl;
 		return src;
 	}
 
-	int distributeConnect(vector <vector<Point>> trackBox,void*_h){
+	int distributeConnect(const vector<vector<Point> > &trackBox,void*_h){
 		_tracker*p = static_cast<_tracker*>(_h);
 		vector<RotatedRect>rRects;
 		for (size_t i = 0; i < trackBox.size(); i++)
@@ -137,7 +142,6 @@ namespace CarTracker {
 			rRects[i].angle = int(rRects[i].angle);
 			if (rRects[i].angle<0)
 			{
-				//if (1){
 				if (rRects[i].size.width<rRects[i].size.height)
 					rRects[i].angle = 90 - rRects[i].angle;
 				else rRects[i].angle = -rRects[i].angle;
@@ -158,7 +162,7 @@ namespace CarTracker {
 		return 0;
 	}
 
-	int distributeMark(vector<cv::RotatedRect> rRects,void* _h){
+	int distributeMark(vector<cv::RotatedRect> & rRects,void* _h){
         _tracker* p = static_cast<_tracker*>(_h);
 		vector<RotatedRect>rect_neigh;
 		Mat frame_gray;
@@ -170,7 +174,6 @@ namespace CarTracker {
 			rRects[i].angle = int(rRects[i].angle);
 			if (rRects[i].angle<0)
 			{
-				//if (1){
 				if (rRects[i].size.width < rRects[i].size.height)
 					rRects[i].angle = -rRects[i].angle;
 				else rRects[i].angle = 90 - rRects[i].angle;
@@ -240,15 +243,18 @@ namespace CarTracker {
 		return 0;
 	}
 
-    Mat findCar(cv::Mat& frame, std::vector<CarAllInfo> &out, void* _h) {
+    // Mat findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
+    int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
+    // int findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
+        cv::Mat frame = inputImages[0];
 		frameNo++;
 		_tracker* p = static_cast<_tracker*>(_h);
 		//_tracker p = static_cast<_tracker>(_h);
 		Mat frmCp = frame.clone();
 		static Mat track = Mat::zeros(frame.size(), frame.type());
 		static Mat dst = Mat(Size(frame.size().width,frame.size().height*2), frame.type());
-		const Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
-		const Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
+		// Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
+		// Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
 		p->tracker.gTracker.findConnect(frmCp,p->cars.size());
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
@@ -257,13 +263,14 @@ namespace CarTracker {
 			distributeConnect(p->tracker.gTracker.trackBox,_h);
 			p->tracker.gTracker.drawTrackBox(frmCp);
 		}
-		if (res.size()>0)
-			distributeMark(res,_h);
+		distributeMark(res,_h);
 		drawTrack(_h,track,frmCp);
 		//imshow("frm", frmCp);
-		frmCp.copyTo(roit);
-		track.copyTo(roib);
-		imshow("dst", dst);
+		// frmCp.copyTo(roit);
+		// track.copyTo(roib);
+		// imshow("dst", dst);
+		imshow("frmCp", frmCp);
+		imshow("track", track);
         //Mat &frame = frames[0];
         //std::vector<cv::RotatedRect> res = p->tracker.process(frame,"STC");
 
@@ -286,10 +293,10 @@ namespace CarTracker {
 			p->_Cars[i].dir = p->cars[i].dir;
 		}
 
-        out = p->_Cars;
-		//*out = &p->cars;
+		*out = &p->_Cars;
 
-        return dst;
+        // return dst;
+        return 0;
     }
 
     void trackerDestroy(void* _h){
