@@ -5,7 +5,8 @@
 int main(int argc, char** argv)
 {
 	//string videoFile = "F:/data/³µÁ¾Êä×ª/2CARS_RLFRLT.avi";
-	string videoFile = "e:\\resources\\tank\\cam4\\demo0.avi";
+	//string videoFile = "e:\\resources\\tank\\cam4\\demo0.avi";
+	string videoFile = "e:\\resources\\tank\\20160312\\s2.avi";
 	//string videoFile = "e:\\resources\\tank\\cam4\\99R_LF.avi";
 	//string videoFile = "e:\\cam4\\2CARS_RLFRLT.avi";
 	VideoCapture capture;
@@ -52,11 +53,11 @@ int main(int argc, char** argv)
 				frame, Rect(Point(0, 0), Point(frame.cols/4, frame.rows)), ip))
 				carNum++;
 		}
-		CarTracker::findCar(frames, &out, ip);
+		Mat dst = CarTracker::findCar(frames, &out, ip);
 		//std::vector<cv::RotatedRect> res = mTracker.process(frame,"STC");
 		//std::cout << res.size() << std::endl;
 
-		//vw << dst;
+		vw << dst;
 	}
 	waitKey(0);
 
