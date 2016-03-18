@@ -15,6 +15,7 @@ namespace CarTracker {
 		Point2f center;
 		int index;
 		bool getDistrubed = false;
+		int lastDis = -1;
 	private:
 
 	};
@@ -270,6 +271,7 @@ namespace CarTracker {
 			carSample.push_back(carLoc(Point2f(p->cars[i].locX, p->cars[i].locY), i));
 		if (carSample.size() < 1)
 			return -1;
+		//distribute each mark if dis<the defined dis
 		for (size_t i = 0; i < rRects.size(); i++)
 		{
 			mark_center = rRects[i].center;
@@ -281,8 +283,11 @@ namespace CarTracker {
 			if (dis < mark_car_dis)//get mark
 			{
 				int idx = carSample[0].index;
-				carSample[0].getDistrubed = true;
-				locatChange(idx, mark_center.x, mark_center.y, _h);
+				if (carSample[0].lastDis<0||dis<carSample[0].lastDis)
+				{
+					carSample[0].getDistrubed = true;
+					locatChange(idx, mark_center.x, mark_center.y, _h);
+				}
 				//need to change the angle here***when connect is unavailable
 
 				if (!p->tracker.gTracker.flag)
