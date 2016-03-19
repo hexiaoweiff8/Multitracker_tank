@@ -108,7 +108,7 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 	vector<vector<cv::Point> >::iterator itc = contours.begin();
 	while (itc!=contours.end())
 	{
-		if (itc->size()<10)
+		if (itc->size()<12||itc->size()>20)
 			itc = contours.erase(itc);
 		else ++itc;
 	}
@@ -189,7 +189,7 @@ vector< vector<Point> > GMMTracker::findConnect(const Mat &src,int lastObjnum){
 		for (int idx = 0; idx >= 0; idx = hierarchy[idx][0])
 		{
 			//std::cout << cv::contourArea(contours[idx]) << std::endl;
-			if (cv::contourArea(contours[idx]) < 15000 || cv::contourArea(contours[idx]) >200000)
+			if (cv::contourArea(contours[idx]) < 20000 || cv::contourArea(contours[idx]) >35000)
 				continue;
 			res.push_back(contours[idx]);
 		}

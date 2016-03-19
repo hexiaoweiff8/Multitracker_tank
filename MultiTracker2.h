@@ -27,19 +27,23 @@ public:
 namespace CarTracker{
 
 struct LocInfoHis{
-	bool mark_flag = 1;
+	bool mark_flag;
 	std::vector<double> dirHis;
 	std::deque<Point2f> locatHis;
 
-	double lastdir = 0;
-	double relativeX = 200;
-	double relativeY = 0;
+	double lastdir;
+	double relativeX;
+	double relativeY;
 
-	int frameNo = 0;
+	int frameNo;
 	STCTracker stctracker;
 	Rect rectRes;
-	Scalar color = Scalar(rand() % 255, rand() % 255, rand()%128+128);
+	Scalar color;
+
+    LocInfoHis() : mark_flag(true), lastdir(0), relativeX(200), relativeY(0)
+                 , frameNo(0), color(rand() % 255, rand() % 255, rand()%128+128) {}
 };
+
 
 struct CarwithHistory :public CarAllInfo,public LocInfoHis{
 	CarwithHistory(){}
@@ -63,7 +67,7 @@ typedef void* algHandle;
 
 algHandle trackerInit();
 int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, algHandle _h);
-Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h);
+int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h);
 void trackerDestroy(algHandle _h);
 
 } // CarTracker

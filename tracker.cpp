@@ -2,8 +2,9 @@
 //#include "Tracker3.hpp"
 #include "MultiTracker2.h"
 //#include "GMMTracker.h"
-#define mark_car_dis 200
-
+#define mark_car_dis 100
+#define max_wait_reg 300
+#define max_two_dis 30
 using namespace cv;
 
 namespace CarTracker {
@@ -14,21 +15,30 @@ namespace CarTracker {
 		~carLoc();
 		Point2f center;
 		int index;
-		bool getDistrubed = false;
-		int lastDis = -1;
+		bool getDistrubed;
+		int lastDis;
 	private:
 
 	};
 
 	carLoc::carLoc(Point2f c,int idx)
-	{
-		center = c;
-		index = idx;
-	}
+        : center(c), index(idx), getDistrubed(false), lastDis(-1)
+	{}
 
 	carLoc::~carLoc()
 	{
 	}
+
+	struct Reginfo{
+		CarBaseInfo regCar;
+		cv::Rect regRect;
+		int tryRegtime;
+
+		Reginfo() :tryRegtime(0){}
+	};
+	bool regSignal = false;
+	Reginfo _regCar;
+
 	static int frameNo = 0;
 	Point2f mark_center;
 	bool compare(Point2f p1, Point2f p2){
@@ -109,7 +119,10 @@ namespace CarTracker {
 		}
 		return 0;
 	}
-    int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, void* _h) {
+
+	
+
+    int _registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, void* _h) {
         _tracker* p = static_cast<_tracker*>(_h);
 		Mat img = frame.clone();
 		vector<RotatedRect>rRects = p->tracker.gTracker.id_Mark(img, rect);
@@ -170,27 +183,41 @@ namespace CarTracker {
         return 0;
     }
 
+	int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, void* _h) {
+        _tracker* p = static_cast<_tracker*>(_h);
+		regSignal = true;
+		_regCar.regCar = _car;
+		_regCar.regRect = rect;
+		_regCar.tryRegtime++;
+		if (!_registerCar(_car, frame, rect, _h)){
+			regSignal = false;
+			_regCar.tryRegtime = 0;
+		}
+		return 0;
+	}
+
 	int locatChange(int carNo,double x, double y, void*_h){
         _tracker* p = static_cast<_tracker*>(_h);
 		if (x < 0) x = 0;
-		else if (x>p->frame.cols) x = p->frame.cols;
+		else if (x>p->frame.cols) x = p->frame.cols-1;
 		if (y < 0) y = 0;
-		else if (y>p->frame.rows) y = p->frame.rows;
+		else if (y>p->frame.rows) y = p->frame.rows-1;
 		double lx = p->cars[carNo].locX;
 		double ly = p->cars[carNo].locY;
 		double dis = sqrtf(float((x - lx)*(x - lx)+(y - ly)*(y - ly)));
-		if (dis>30)
+		//***delete this part?
+		if (dis > max_two_dis)
 		{
-			p->cars[carNo].locX = lx + (x - lx) * 30 / dis;
-			p->cars[carNo].locY = ly + (y - ly) * 30 / dis;
+			p->cars[carNo].locX = lx + (x - lx) * max_two_dis / dis;
+			p->cars[carNo].locY = ly + (y - ly) * max_two_dis / dis;
 		}
 		else
 		{
 			p->cars[carNo].locX = x;
 			p->cars[carNo].locY = y;
 		}
-		if (p->cars[carNo].locatHis.size() > 69) p->cars[carNo].locatHis.pop_front();
-		p->cars[carNo].locatHis.push_back(Point2f(x, y));
+		if (p->cars[carNo].locatHis.size() > 59) p->cars[carNo].locatHis.pop_front();
+		p->cars[carNo].locatHis.push_back(Point2f(p->cars[carNo].locX, p->cars[carNo].locY));
 		return 0;
 	}
 	
@@ -320,14 +347,16 @@ namespace CarTracker {
 					//cout << rect << endl;
 					//init the rect to track
 					p->tracker.gTracker.roi_adjust(p->frame, p->cars[i].rectRes);
-					p->cars[i].stctracker.init(frame_gray, p->cars[i].rectRes);
-					p->cars[i].frameNo = 1;
-					p->cars[i].stctracker.tracking(frame_gray, p->cars[i].rectRes, p->cars[i].frameNo);
+                    if(p->cars[i].rectRes.width > 20&&p->cars[i].rectRes.height > 20){
+					    p->cars[i].stctracker.init(frame_gray, p->cars[i].rectRes);
+					    p->cars[i].frameNo = 1;
+					    p->cars[i].stctracker.tracking(frame_gray, p->cars[i].rectRes, p->cars[i].frameNo);
+                    }
 					//locatChange(i, p->cars[i].rectRes.x+p->cars[i].rectRes.width / 2 - p->cars[i].relativeX,
 					//p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - p->cars[i].relativeY,_h);
 					p->cars[i].mark_flag = 0;
 				}
-				else//lost marks for many frames
+				else if(p->cars[i].frameNo > 0)//lost marks for many frames
 				{
 					p->cars[i].frameNo++;
 					cout << p->cars[i].frameNo << endl;
@@ -408,8 +437,8 @@ namespace CarTracker {
 	}
 
     // Mat findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
-    //int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
-    Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
+    int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
+    // Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
         cv::Mat frame = inputImages[0];
 		frameNo++;
 		_tracker* p = static_cast<_tracker*>(_h);
@@ -417,9 +446,23 @@ namespace CarTracker {
 		Mat frmCp = frame.clone();
 		Mat track = Mat::zeros(frame.size(), frame.type());
 		static Mat dst = Mat(Size(frame.size().width,frame.size().height*2), frame.type());
-		 Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
-		 Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
+		 //Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
+		 //Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
+		if (regSignal)
+		{
+			_regCar.tryRegtime++;
+			if (!_registerCar(_regCar.regCar, frame, _regCar.regRect, _h))
+			{
+				regSignal = false;
+				_regCar.tryRegtime = 0;
+			}
+			if (_regCar.tryRegtime > max_wait_reg)
+			{
+				regSignal = false;
+				cout << "*********cannot find the car*********" << endl;
+			}
+		}
 		p->tracker.gTracker.findConnect(frmCp,p->cars.size());
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
 		if (p->tracker.gTracker.flag)
@@ -431,8 +474,8 @@ namespace CarTracker {
 		drawTrack(_h,track,frmCp);
 		delTarget(_h);
 		//imshow("frm", frmCp);
-		 frmCp.copyTo(roit);
-		 track.copyTo(roib);
+		 // frmCp.copyTo(roit);
+		 // track.copyTo(roib);
 		// imshow("dst", dst);
 		imshow("frmCp", frmCp);
 		imshow("track", track);
@@ -460,8 +503,8 @@ namespace CarTracker {
 
 		*out = &p->_Cars;
 
-         return dst;
-        //return 0;
+         // return dst;
+        return 0;
     }
 
     void trackerDestroy(void* _h){
