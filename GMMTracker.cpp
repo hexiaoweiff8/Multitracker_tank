@@ -108,7 +108,7 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 	vector<vector<cv::Point> >::iterator itc = contours.begin();
 	while (itc!=contours.end())
 	{
-		if (itc->size()<12||itc->size()>20)
+		if (contourArea(*itc)<30||contourArea(*itc)>130)
 			itc = contours.erase(itc);
 		else ++itc;
 	}

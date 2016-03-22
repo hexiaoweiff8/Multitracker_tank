@@ -2,9 +2,11 @@
 //#include "Tracker3.hpp"
 #include "MultiTracker2.h"
 //#include "GMMTracker.h"
-#define mark_car_dis 100
+#define mark_car_dis 300
 #define max_wait_reg 300
-#define max_two_dis 30
+#define max_two_dis 100
+#define connect_scale 1.5 
+#define connect_car_dis 200
 using namespace cv;
 
 namespace CarTracker {
@@ -66,9 +68,9 @@ namespace CarTracker {
 			(p2.y - mark_center.y)*(p2.y - mark_center.y);
 	}
 
-	int anglediff(int b1, int b2){
-		int a1 = b1;
-		int a2 = b2;
+	int anglediff(int a1, int a2){
+		//int a1 = b1;
+		//int a2 = b2;
 		if (a1>a2)
 			swap(a1, a2);
 		if (a2 - a1 < abs(a2 - a1 - 360))
@@ -208,6 +210,7 @@ namespace CarTracker {
 		//***delete this part?
 		if (dis > max_two_dis)
 		{
+			return 0;
 			p->cars[carNo].locX = lx + (x - lx) * max_two_dis / dis;
 			p->cars[carNo].locY = ly + (y - ly) * max_two_dis / dis;
 		}
@@ -238,19 +241,61 @@ namespace CarTracker {
 			}
 			if (!p->cars[i].mark_flag)
 				rectangle(frmCp, p->cars[i].rectRes, Scalar(255, 0, 0), 1, 8, 0);
-			cout << p->cars[i].dir << " ";
+			cout << "angle:" << p->cars[i].dir << " ";
 		}
         if(p->cars.size())
 		    cout << endl;
 		return src;
 	}
 
+    //http://www.blackpawn.com/texts/pointinpoly/
+	bool pointInTriangle(const Point2f &a,const Point2f &b,const Point2f &c,const Point2f &p){
+		//Point2f a(0, 0), b(5, 0), c(0, 5), p(5, 2);
+		Mat v0 = Mat(c - a);
+		Mat v1 = Mat(b - a);
+		Mat v2 = Mat(p - a);
+		float dot00 = v0.dot(v0);
+		float dot01 = v0.dot(v1);
+		float dot02 = v0.dot(v2);
+		float dot11 = v1.dot(v1);
+		float dot12 = v1.dot(v2);
+		float invDenom = 1 / (dot00*dot11 - dot01*dot01);
+		float u = (dot11*dot02 - dot01*dot12)*invDenom;
+		float v = (dot00*dot12 - dot01*dot02)*invDenom;
+		return ((u >= 0) && (v >= 0) && (u + v < 1));
+	}
+	
+	bool pointIsinsideBox(const Point2f &p, const RotatedRect &r){
+		Point2f vertics[4];
+		r.points(vertics);
+		if (pointInTriangle(vertics[0],vertics[1],vertics[2],p)||
+			pointInTriangle(vertics[3],vertics[1],vertics[2],p))
+			return true;
+		return false;
+	}
+
 	int distributeConnect(const vector<vector<Point> > &trackBox,void*_h){
 		_tracker*p = static_cast<_tracker*>(_h);
+		if (p->cars.size() < 1) return -2;
+		if (trackBox.size() < 1) return -3;
 		vector<RotatedRect>rRects;
 		for (size_t i = 0; i < trackBox.size(); i++)
 			rRects.push_back(minAreaRect(trackBox[i]));
-		if (rRects.size() < p->cars.size()) return -1;
+		//if (rRects.size() < p->cars.size()) return -1;
+
+		//delete the unqualified connect
+		vector<RotatedRect>::iterator itr = rRects.begin();
+		while (itr!=rRects.end())
+		{
+			if ((*itr).size.width / (*itr).size.height < connect_scale &&
+				(*itr).size.height / (*itr).size.width < connect_scale){
+				itr = rRects.erase(itr);
+			}
+			else itr++;
+		}
+		if (rRects.size() < 1) return -1;
+		
+		//correct the angle
 		for (size_t i = 0; i < rRects.size(); i++)
 		{
 			//rRects[i].angle = int(rRects[i].angle);
@@ -262,17 +307,48 @@ namespace CarTracker {
 			}
 		}
 
+		vector<carLoc> carSample;
 		for (size_t i = 0; i < p->cars.size(); i++)
+			carSample.push_back(carLoc(Point2f(p->cars[i].locX, p->cars[i].locY), i));
+		//if (carSample.size() < 1)
+		//	return -2;
+		//distribute each connect if dis<the defined dis
+		for (size_t i = 0; i < rRects.size(); i++)
 		{
-			//choose the nearest
-			mark_center = Point2f(float(p->cars[i].locX), float(p->cars[i].locY));
-			sort(rRects.begin(), rRects.end(), comp2Rotat);
-			//need to change the angle here***
-			if (anglediff(int(rRects[0].angle), int(p->cars[i].dir))<
-				anglediff(int(rRects[0].angle) + 180, int(p->cars[i].dir)))
-				p->cars[i].dir = rRects[0].angle;
-			else p->cars[i].dir = int(rRects[0].angle + 180) % 360;
+			for (int j = 0; j < p->cars.size(); j++)
+			{
+				//inside the rotatebox
+				if (pointIsinsideBox(Point2f(p->cars[j].locX,p->cars[j].locY),rRects[i]))
+				{
+					//cout << " " << rRects[i].angle;
+					float thelta = rRects[i].angle * 2 * CV_PI / 360;
+					Point2f recVec = rRects[i].center - Point2f(p->cars[j].locX, p->cars[j].locY);
+					//cout << " " << recVec << " ";
+					Mat mRecVec = Mat(Point2f(recVec.x,-recVec.y));
+					Mat theltavec = Mat(Point2f(cos(thelta), sin(thelta)));
+					if (mRecVec.dot(theltavec)<0)
+						p->cars[j].dir = int(rRects[i].angle + 180) % 360;
+					else p->cars[j].dir = rRects[i].angle;
+					//if (anglediff(int(rRects[i].angle), int(p->cars[j].dir))<
+					//	anglediff(int(rRects[i].angle) + 180, int(p->cars[j].dir)))
+					//	p->cars[j].dir = rRects[i].angle;
+					//else p->cars[j].dir = int(rRects[i].angle + 180) % 360;
+					break;
+				}
+			}
 		}
+
+		//for (size_t i = 0; i < p->cars.size(); i++)
+		//{
+		//	//choose the nearest
+		//	mark_center = Point2f(float(p->cars[i].locX), float(p->cars[i].locY));
+		//	sort(rRects.begin(), rRects.end(), comp2Rotat);
+		//	//need to change the angle here***
+		//	if (anglediff(int(rRects[0].angle), int(p->cars[i].dir))<
+		//		anglediff(int(rRects[0].angle) + 180, int(p->cars[i].dir)))
+		//		p->cars[i].dir = rRects[0].angle;
+		//	else p->cars[i].dir = int(rRects[0].angle + 180) % 360;
+		//}
 		return 0;
 	}
 
@@ -317,13 +393,13 @@ namespace CarTracker {
 				}
 				//need to change the angle here***when connect is unavailable
 
-				if (!p->tracker.gTracker.flag)
-				{
-					if (anglediff(int(rRects[i].angle), int(p->cars[i].dir))<
-						anglediff(int(rRects[i].angle) + 180, int(p->cars[i].dir)))
-						p->cars[i].dir = rRects[i].angle;
-					else p->cars[i].dir = int(rRects[i].angle + 180) % 360;
-				}
+				//if (!p->tracker.gTracker.flag)
+				//{
+				//	if (anglediff(int(rRects[i].angle), int(p->cars[i].dir))<
+				//		anglediff(int(rRects[i].angle) + 180, int(p->cars[i].dir)))
+				//		p->cars[i].dir = rRects[i].angle;
+				//	else p->cars[i].dir = int(rRects[i].angle + 180) % 360;
+				//}
 				if (!p->cars[idx].mark_flag)//frist gain the mark
 					p->cars[idx].frameNo = 0;
 				p->cars[idx].mark_flag = 1;
@@ -436,9 +512,9 @@ namespace CarTracker {
 		return 0;
 	}
 
-    // Mat findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
-    int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
-    // Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
+     //Mat findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
+    //int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
+     Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
         cv::Mat frame = inputImages[0];
 		frameNo++;
 		_tracker* p = static_cast<_tracker*>(_h);
@@ -446,8 +522,8 @@ namespace CarTracker {
 		Mat frmCp = frame.clone();
 		Mat track = Mat::zeros(frame.size(), frame.type());
 		static Mat dst = Mat(Size(frame.size().width,frame.size().height*2), frame.type());
-		 //Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
-		 //Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
+		 Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
+		 Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
 		if (regSignal)
 		{
@@ -465,17 +541,16 @@ namespace CarTracker {
 		}
 		p->tracker.gTracker.findConnect(frmCp,p->cars.size());
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
-		if (p->tracker.gTracker.flag)
-		{
-			distributeConnect(p->tracker.gTracker.trackBox,_h);
-			p->tracker.gTracker.drawTrackBox(frmCp);
-		}
 		distributeMark(res,_h);
+		distributeConnect(p->tracker.gTracker.conNectBox,_h);
+		if (p->tracker.gTracker.flag)
+			p->tracker.gTracker.drawTrackBox(frmCp);
+
 		drawTrack(_h,track,frmCp);
 		delTarget(_h);
 		//imshow("frm", frmCp);
-		 // frmCp.copyTo(roit);
-		 // track.copyTo(roib);
+		  frmCp.copyTo(roit);
+		  track.copyTo(roib);
 		// imshow("dst", dst);
 		imshow("frmCp", frmCp);
 		imshow("track", track);
@@ -503,8 +578,8 @@ namespace CarTracker {
 
 		*out = &p->_Cars;
 
-         // return dst;
-        return 0;
+          return dst;
+        //return 0;
     }
 
     void trackerDestroy(void* _h){

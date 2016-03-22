@@ -6,11 +6,11 @@ int main(int argc, char** argv)
 {
 	//string videoFile = "F:/data/³µÁ¾Êä×ª/2CARS_RLFRLT.avi";
 	//string videoFile = "e:\\resources\\tank\\cam4\\demo0.avi";
-	//string videoFile = "e:\\resources\\tank\\20160312\\s2.avi";
+	string videoFile = "e:\\resources\\tank\\20160312\\s1.avi";
 	//string videoFile = "e:\\resources\\tank\\res.avi";
 	//string videoFile = "e:\\resources\\tank\\cam4\\99R_LF.avi";
 	//string videoFile = "e:\\cam4\\2CARS_RLFRLT.avi";
-	string videoFile = "e:\\carTrack\\cam4\\RES.avi";
+	//string videoFile = "e:\\carTrack\\cam4\\RES.avi";
 	VideoCapture capture;
 	capture.open(videoFile);
 	if (!capture.isOpened())
@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     //CV_FOURCC('M', 'J', 'P', 'G'),
 	Mat frame;
 	capture.read(frame);
-	resize(frame, frame, Size(frame.cols / 4, frame.rows / 4));
+	//resize(frame, frame, Size(frame.cols / 4, frame.rows / 4));
 
 	int ex = static_cast<int>(capture.get(CV_CAP_PROP_FOURCC));
 	vw.open("res.avi", ex , capture.get(CV_CAP_PROP_FPS), 
@@ -37,10 +37,9 @@ int main(int argc, char** argv)
 	vector<CarTracker::CarAllInfo> *out;
 	while (capture.read(frame))
 	{
-		//resize(frame, frame, Size(frame.cols/2,frame.rows/2));
-		//CarTracker::_tracker*p = static_cast<CarTracker::_tracker*>(ip);
 		//std::vector<cv::RotatedRect> res = p->tracker.process(frame,"STC");
-		resize(frame, frame, Size(frame.cols / 4, frame.rows / 4));
+
+		//resize(frame, frame, Size(frame.cols / 4, frame.rows / 4));
 		vector<Mat>frames;
 		frames.push_back(frame);
 		key = waitKey(1);
@@ -58,11 +57,11 @@ int main(int argc, char** argv)
 				carNum++;
 		}
 		//Mat dst = CarTracker::findCar(frames, &out, ip);
-		CarTracker::findCar(frames, &out, ip);
+		Mat dst = CarTracker::findCar(frames, &out, ip);
 		//std::vector<cv::RotatedRect> res = mTracker.process(frame,"STC");
 		//std::cout << res.size() << std::endl;
 
-		//vw << dst;
+		vw << dst;
 	}
 	waitKey(0);
 
