@@ -67,7 +67,7 @@ typedef void* algHandle;
 
 algHandle trackerInit();
 int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, algHandle _h);
-Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h);
+int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h);
 void trackerDestroy(algHandle _h);
 
 } // CarTracker

@@ -57,11 +57,11 @@ int main(int argc, char** argv)
 				carNum++;
 		}
 		//Mat dst = CarTracker::findCar(frames, &out, ip);
-		Mat dst = CarTracker::findCar(frames, &out, ip);
+		CarTracker::findCar(frames, &out, ip);
 		//std::vector<cv::RotatedRect> res = mTracker.process(frame,"STC");
 		//std::cout << res.size() << std::endl;
 
-		vw << dst;
+		//vw << dst;
 	}
 	waitKey(0);
 

@@ -6,7 +6,7 @@
 #define max_wait_reg 300
 #define max_two_dis 100
 #define connect_scale 1.5 
-#define connect_car_dis 200
+//#define connect_car_dis 200
 using namespace cv;
 
 namespace CarTracker {
@@ -514,7 +514,7 @@ namespace CarTracker {
 
      //Mat findCar(cv::Mat& frame, std::vector<CarAllInfo>** out, void* _h) {
     //int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
-     Mat findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
+     int findCar(std::vector<cv::Mat>& inputImages, std::vector<CarAllInfo>** out, algHandle _h){
         cv::Mat frame = inputImages[0];
 		frameNo++;
 		_tracker* p = static_cast<_tracker*>(_h);
@@ -578,8 +578,8 @@ namespace CarTracker {
 
 		*out = &p->_Cars;
 
-          return dst;
-        //return 0;
+          //return dst;
+        return 0;
     }
 
     void trackerDestroy(void* _h){
