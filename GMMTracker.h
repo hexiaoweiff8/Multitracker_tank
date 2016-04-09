@@ -20,6 +20,7 @@ public:
 	vector<RotatedRect>tracking(const Mat&img, const Rect &roi);
 	vector<RotatedRect> id_Mark(Mat &_img,const Rect &roi);
 	void drawTrackBox(Mat &img);
+	void drawConnectBox(Mat &src);
 	void help();
 
 private:

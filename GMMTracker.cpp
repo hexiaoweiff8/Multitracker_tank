@@ -106,11 +106,17 @@ vector<RotatedRect> GMMTracker::id_Mark(Mat &_img,const Rect &roi){
 	vector<Vec4i>hierarchy;
 	findContours(mark, contours, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	vector<vector<cv::Point> >::iterator itc = contours.begin();
+	//while (itc!=contours.end())
+	//{
+	//	if (contourArea(*itc)<30||contourArea(*itc)>130)
+	//		itc = contours.erase(itc);
+	//	else ++itc;
+	//}
 	while (itc!=contours.end())
 	{
-		if (contourArea(*itc)<30||contourArea(*itc)>130)
+		if (cv::contourArea(*itc)<30)
 			itc = contours.erase(itc);
-		else ++itc;
+		else itc++;
 	}
 	//vector<vector<Point> >contour_poly(contours.size());
 	vector<RotatedRect> boundRect(contours.size());
@@ -189,7 +195,7 @@ vector< vector<Point> > GMMTracker::findConnect(const Mat &src,int lastObjnum){
 		for (int idx = 0; idx >= 0; idx = hierarchy[idx][0])
 		{
 			//std::cout << cv::contourArea(contours[idx]) << std::endl;
-			if (cv::contourArea(contours[idx]) < 20000 || cv::contourArea(contours[idx]) >35000)
+			if (cv::contourArea(contours[idx]) < 16000 || cv::contourArea(contours[idx]) >35000)
 				continue;
 			res.push_back(contours[idx]);
 		}
@@ -334,6 +340,25 @@ vector< vector<Point> > GMMTracker::tracking(const Mat &src)
 	}
 
 	return trackBox;
+}
+
+void GMMTracker::drawConnectBox(Mat &src)
+{
+	if (conNectBox.size() > 0)
+	{
+		for (size_t idx = 0; idx < conNectBox.size(); idx++)
+		{
+			Point2f tmp_points[4] = {Point2f(0,0), Point2f(0,0), Point2f(0,0), Point2f(0,0)};
+			RotatedRect box = minAreaRect(Mat(conNectBox[idx]));
+			box.points(tmp_points);
+			Point box_points[4] = {Point(0,0), Point(0,0), Point(0,0), Point(0,0)};
+			for (int i = 0; i < 4; i++)
+				box_points[i] = tmp_points[i];
+
+			for (int i = 0; i < 4; i++)
+				line(src, box_points[i], box_points[(i+1)%4], Scalar(0,0,255), 2);
+		}
+	}
 }
 
 void GMMTracker::drawTrackBox(Mat &src)

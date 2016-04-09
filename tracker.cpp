@@ -290,7 +290,7 @@ namespace CarTracker {
 		Point2f vertics[4];
 		r.points(vertics);
 		if (pointInTriangle(vertics[0],vertics[1],vertics[2],p)||
-			pointInTriangle(vertics[3],vertics[1],vertics[2],p))
+			pointInTriangle(vertics[3],vertics[0],vertics[2],p))
 			return true;
 		return false;
 	}
@@ -463,8 +463,10 @@ namespace CarTracker {
 					thelta = (p->cars[i].dir - p->cars[i].lastdir)/360*2*CV_PI;
 					rx = p->cars[i].relativeX*cos(thelta) - p->cars[i].relativeY*sin(thelta);
 					ry = p->cars[i].relativeX*sin(thelta) + p->cars[i].relativeY*cos(thelta);
+					//locatChange(i, p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2 - rx,
+						//p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - ry, _h);
 					locatChange(i, p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2 - rx,
-						p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - ry, _h);
+						p->cars[i].locY, _h);
 				}
 
 			}
@@ -576,8 +578,9 @@ namespace CarTracker {
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
 		distributeMark(res,_h);
 		distributeConnect(p->tracker.gTracker.conNectBox,_h);
-		if (p->tracker.gTracker.flag)
-			p->tracker.gTracker.drawTrackBox(frmCp);
+		p->tracker.gTracker.drawConnectBox(frmCp);
+		//if (p->tracker.gTracker.flag)
+		//	p->tracker.gTracker.drawTrackBox(frmCp);
 
 		drawTrack(_h,track,frmCp);
 		delTarget(_h);
