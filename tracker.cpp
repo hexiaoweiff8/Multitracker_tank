@@ -40,6 +40,7 @@ namespace CarTracker {
 	};
 	bool regSignal = false;
 	Reginfo _regCar;
+	deque<Reginfo>_waitRegCar;
 
 	static int frameNo = 0;
 	Point2f mark_center;
@@ -187,13 +188,15 @@ namespace CarTracker {
 
 	int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, void* _h) {
         _tracker* p = static_cast<_tracker*>(_h);
-		regSignal = true;
+		//regSignal = true;
 		_regCar.regCar = _car;
 		_regCar.regRect = rect;
-		_regCar.tryRegtime++;
+		_regCar.tryRegtime = 0;
+		_waitRegCar.push_back(_regCar);
 		if (!_registerCar(_car, frame, rect, _h)){
-			regSignal = false;
-			_regCar.tryRegtime = 0;
+			//regSignal = false;
+			_waitRegCar.pop_front();
+			//_regCar.tryRegtime =0;
 		}
 		return 0;
 	}
@@ -525,20 +528,37 @@ namespace CarTracker {
 		 Mat roit = dst(Rect(Point(0, 0), Point(dst.cols, dst.rows / 2)));
 		 Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
-		if (regSignal)
+
+		if (_waitRegCar.size()>0)
 		{
-			_regCar.tryRegtime++;
-			if (!_registerCar(_regCar.regCar, frame, _regCar.regRect, _h))
+			_waitRegCar[0].tryRegtime++;
+			if (!_registerCar(_waitRegCar[0].regCar, frame, _waitRegCar[0].regRect, _h))
 			{
-				regSignal = false;
-				_regCar.tryRegtime = 0;
+				_waitRegCar.pop_front();
+				//regSignal = false;
+				//_regCar.tryRegtime = 0;
 			}
-			if (_regCar.tryRegtime > max_wait_reg)
+			if (_waitRegCar[0].tryRegtime > max_wait_reg)
 			{
-				regSignal = false;
+				//regSignal = false;
+				_waitRegCar.pop_front();
 				cout << "*********cannot find the car*********" << endl;
 			}
 		}
+		//if (regSignal)
+		//{
+		//	_regCar.tryRegtime++;
+		//	if (!_registerCar(_regCar.regCar, frame, _regCar.regRect, _h))
+		//	{
+		//		regSignal = false;
+		//		_regCar.tryRegtime = 0;
+		//	}
+		//	if (_regCar.tryRegtime > max_wait_reg)
+		//	{
+		//		regSignal = false;
+		//		cout << "*********cannot find the car*********" << endl;
+		//	}
+		//}
 		p->tracker.gTracker.findConnect(frmCp,p->cars.size());
         std::vector<cv::RotatedRect> res = p->tracker.gTracker.id_Mark(frmCp,Rect(Point(0,0),Point(frame.cols,frame.rows)));
 		distributeMark(res,_h);
