@@ -38,8 +38,7 @@ namespace CarTracker {
 
 		Reginfo() :tryRegtime(0){}
 	};
-	bool regSignal = false;
-	Reginfo _regCar;
+	bool readyToReg = false;
 	deque<Reginfo>_waitRegCar;
 
 	static int frameNo = 0;
@@ -108,8 +107,11 @@ namespace CarTracker {
 					if (!in_flag)
 					{
 						vector<CarTracker::CarwithHistory>::iterator itc = p->cars.begin();
+						vector<CarTracker::CarAllInfo>::iterator _itc = p->_Cars.begin();
+						_itc += i;
 						itc += i;
 						p->cars.erase(itc);
+						p->_Cars.erase(_itc);
 					}
 					//if (p->cars[i].locatHis[locatSize-2].x>
 					//	p->cars[i].locatHis[locatSize-1].x&&
@@ -186,14 +188,30 @@ namespace CarTracker {
         return 0;
     }
 
+	bool registedCarInRect(const cv::Rect &rect, void* _h){
+        _tracker* p = static_cast<_tracker*>(_h);
+		if (p->cars.size() < 1)
+			return true;
+		else
+		{
+			for (size_t i = 0; i < p->cars.size(); i++)
+			{
+				if (p->cars[i].locX < rect.x + rect.width)
+					return false;
+			}
+			return true;
+		}
+	}
+
 	int registerCar(const CarBaseInfo &_car, const cv::Mat &frame, const cv::Rect &rect, void* _h) {
         _tracker* p = static_cast<_tracker*>(_h);
 		//regSignal = true;
+		Reginfo _regCar;
 		_regCar.regCar = _car;
 		_regCar.regRect = rect;
 		_regCar.tryRegtime = 0;
 		_waitRegCar.push_back(_regCar);
-		if (!_registerCar(_car, frame, rect, _h)){
+		if (registedCarInRect(rect,_h)&&(!_registerCar(_car, frame, rect, _h))){
 			//regSignal = false;
 			_waitRegCar.pop_front();
 			//_regCar.tryRegtime =0;
@@ -529,18 +547,13 @@ namespace CarTracker {
 		 Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
 
-		if (_waitRegCar.size()>0)
+		if (_waitRegCar.size()>0&&registedCarInRect(_waitRegCar[0].regRect,_h))
 		{
 			_waitRegCar[0].tryRegtime++;
 			if (!_registerCar(_waitRegCar[0].regCar, frame, _waitRegCar[0].regRect, _h))
-			{
 				_waitRegCar.pop_front();
-				//regSignal = false;
-				//_regCar.tryRegtime = 0;
-			}
-			if (_waitRegCar[0].tryRegtime > max_wait_reg)
+			else if (_waitRegCar[0].tryRegtime > max_wait_reg)
 			{
-				//regSignal = false;
 				_waitRegCar.pop_front();
 				cout << "*********cannot find the car*********" << endl;
 			}
@@ -589,7 +602,7 @@ namespace CarTracker {
         //        p->cars[i].dir = -box.angle;
         //    }
         //}
-		for (size_t i = 0; i < p->_Cars.size(); i++)
+		for (size_t i = 0; i < p->cars.size(); i++)
 		{
 			p->_Cars[i].locX = p->cars[i].locX;
 			p->_Cars[i].locY = p->cars[i].locY;
