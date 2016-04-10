@@ -27,6 +27,7 @@
 *.app
 
 # others
+*.lib
 *.jpg
 Debug/
 Release/

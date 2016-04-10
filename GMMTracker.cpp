@@ -1,5 +1,8 @@
 #include "GMMTracker.h"
 
+#define minTankArea 18000
+#define maxTankArea 40000
+
 GMMTracker::GMMTracker()
 {
 	int history = 10;
@@ -195,7 +198,7 @@ vector< vector<Point> > GMMTracker::findConnect(const Mat &src,int lastObjnum){
 		for (int idx = 0; idx >= 0; idx = hierarchy[idx][0])
 		{
 			//std::cout << cv::contourArea(contours[idx]) << std::endl;
-			if (cv::contourArea(contours[idx]) < 16000 || cv::contourArea(contours[idx]) >35000)
+			if (cv::contourArea(contours[idx]) < minTankArea || cv::contourArea(contours[idx]) > maxTankArea)
 				continue;
 			res.push_back(contours[idx]);
 		}
@@ -238,7 +241,7 @@ vector< vector<Point> > GMMTracker::tracking(const Mat &src)
 			for (int idx = 0; idx >= 0; idx = hierarchy[idx][0])
 			{
 				//std::cout << cv::contourArea(contours[idx]) << std::endl;
-				if (cv::contourArea(contours[idx]) < 15000 || cv::contourArea(contours[idx]) >200000)
+				if (cv::contourArea(contours[idx]) < 15000 || cv::contourArea(contours[idx]) >35000)
 					continue;
 				res.push_back(contours[idx]);
 			}
@@ -302,7 +305,7 @@ vector< vector<Point> > GMMTracker::tracking(const Mat &src)
 				for (int idx = 0; idx >= 0; idx = hierarchy2[idx][0])
 				{
 						
-					if (cv::contourArea(contours2[idx]) < 15000 || cv::contourArea(contours2[idx]) >200000)
+					if (cv::contourArea(contours2[idx]) < 14000 || cv::contourArea(contours2[idx]) >35000)
 					{
 						continue;
 					}

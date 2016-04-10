@@ -28,6 +28,7 @@ namespace CarTracker{
 
 struct LocInfoHis{
 	bool mark_flag;
+	bool getMark;
 	std::vector<double> dirHis;
 	std::deque<Point2f> locatHis;
 
@@ -40,7 +41,7 @@ struct LocInfoHis{
 	Rect rectRes;
 	Scalar color;
 
-    LocInfoHis() : mark_flag(true), lastdir(0), relativeX(200), relativeY(0)
+    LocInfoHis() : mark_flag(true),getMark(false),lastdir(0), relativeX(200), relativeY(0)
                  , frameNo(0), color(rand() % 255, rand() % 255, rand()%128+128) {}
 };
 

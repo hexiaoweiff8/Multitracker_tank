@@ -4,8 +4,10 @@
 //#include "GMMTracker.h"
 #define mark_car_dis 300
 #define max_wait_reg 300
-#define max_two_dis 100
-#define connect_scale 1.5 
+#define max_two_dis 200
+#define connect_scale 1.35
+#define minMoveTakeEffectDis 3
+#define DEBUG 0
 //#define connect_car_dis 200
 using namespace cv;
 
@@ -42,6 +44,7 @@ namespace CarTracker {
 	deque<Reginfo>_waitRegCar;
 
 	static int frameNo = 0;
+	static int currentframe = 0;
 	Point2f mark_center;
 	bool compare(Point2f p1, Point2f p2){
 		//cout << mark_center;
@@ -133,9 +136,11 @@ namespace CarTracker {
 		vector<RotatedRect>rRects = p->tracker.gTracker.id_Mark(img, rect);
 		if (rRects.size()!=1)
 		{
+#if DEBUG
 			cout << "regist failed! Mark:" ;
 			if (rRects.size() == 0)
 				cout << "none" << endl;
+#endif
 			return -1;
 		}
 		mark_center = rRects[0].center;
@@ -253,19 +258,31 @@ namespace CarTracker {
 			{
 				Point center = static_cast<Point>(p->cars[i].locatHis[j]);
 					//Point(cvRound(p->cars[i].locatHis[j].x), cvRound(p->cars[i].locY));
-				circle(src, center, 1, p->cars[i].color, 1, 8, 0);
+				circle(frmCp, center, 1, p->cars[i].color, 1, 8, 0);
+				//circle(frmCp, center, 1, Scalar::all(0), 1, 8, 0);
 			}
 			if (p->cars[i].locatHis.size()>0)
 			{
 				Point center = static_cast<Point>(p->cars[i].locatHis.back());
 				circle(src, center, 2, Scalar::all(255), 1, 8, 0);
+				circle(frmCp, center, 1, Scalar::all(0), 1, 8, 0);
 			}
 			if (!p->cars[i].mark_flag)
 				rectangle(frmCp, p->cars[i].rectRes, Scalar(255, 0, 0), 1, 8, 0);
+			//char charbuf[10];
+			//_itoa(int(p->cars[i].dir), charbuf, 10);
+			ostringstream ostr;
+			ostr << p->cars[i].dir;
+			putText(frmCp, ostr.str(),
+				Point(p->cars[i].locX+5, p->cars[i].locY+5), FONT_HERSHEY_PLAIN, 1, Scalar::all(255));
+#if DEBUG
 			cout << "angle:" << p->cars[i].dir << " ";
+#endif
 		}
+#if DEBUG
         if(p->cars.size())
 		    cout << endl;
+#endif
 		return src;
 	}
 
@@ -287,15 +304,16 @@ namespace CarTracker {
 	}
 	
 	bool pointIsinsideBox(const Point2f &p, const RotatedRect &r){
-		Point2f vertics[4];
+		Point2f vertics[4] = {Point2f(0,0), Point2f(0,0), Point2f(0,0), Point2f(0,0)};
 		r.points(vertics);
-		if (pointInTriangle(vertics[0],vertics[1],vertics[2],p)||
-			pointInTriangle(vertics[3],vertics[0],vertics[2],p))
+		if (pointInTriangle(vertics[0], vertics[1], vertics[2], p) ||
+			pointInTriangle(vertics[2], vertics[3], vertics[0], p))
 			return true;
-		return false;
+		else
+			return false;
 	}
 
-	int distributeConnect(const vector<vector<Point> > &trackBox,void*_h){
+	int distributeConnect(const vector<vector<cv::Point> > &trackBox,void*_h){
 		_tracker*p = static_cast<_tracker*>(_h);
 		if (p->cars.size() < 1) return -2;
 		if (trackBox.size() < 1) return -3;
@@ -314,8 +332,14 @@ namespace CarTracker {
 			}
 			else itr++;
 		}
-		if (rRects.size() < 1) return -1;
+		if (rRects.size() < 1) {
+			cout << "no connectRect" << endl;
+			return -1;
+		}
 		
+		vector<RotatedRect>_orgRects;
+		for (size_t i = 0; i < rRects.size(); i++)
+			_orgRects.push_back(rRects[i]);
 		//correct the angle
 		for (size_t i = 0; i < rRects.size(); i++)
 		{
@@ -334,14 +358,21 @@ namespace CarTracker {
 		//if (carSample.size() < 1)
 		//	return -2;
 		//distribute each connect if dis<the defined dis
+		
+		//std::cout << "connect :" << rRects.size() << " ";
 		for (size_t i = 0; i < rRects.size(); i++)
 		{
 			for (int j = 0; j < p->cars.size(); j++)
 			{
 				//inside the rotatebox
-				if (pointIsinsideBox(Point2f(p->cars[j].locX,p->cars[j].locY),rRects[i]))
+				bool insideOrnot = pointIsinsideBox(Point2f(p->cars[j].locX, p->cars[j].locY), _orgRects[i]);
+           
+				// if (insideOrnot&&p->cars[j].getMark)
+				if (insideOrnot)
 				{
+					//cout << "Car " << j << " In" << endl;
 					//cout << " " << rRects[i].angle;
+					std::cout << j << " inside " << i << endl;
 					float thelta = rRects[i].angle * 2 * CV_PI / 360;
 					Point2f recVec = rRects[i].center - Point2f(p->cars[j].locX, p->cars[j].locY);
 					//cout << " " << recVec << " ";
@@ -356,6 +387,18 @@ namespace CarTracker {
 					//else p->cars[j].dir = int(rRects[i].angle + 180) % 360;
 					break;
 				}
+				//else
+				//{
+				//	Point2f vertices[4];
+				//	rRects[0].points(vertices);
+				//	cout << "not inside" << endl;
+				//	cout<<Point(p->cars[j].locX, p->cars[j].locY) << " ";
+				//	for (size_t i = 0; i < 4; i++)
+				//	{
+				//		cout << vertices[i]<<"	";
+				//	}
+				//	cout << endl;
+				//}
 			}
 		}
 
@@ -379,17 +422,17 @@ namespace CarTracker {
 		Mat frame_gray;
 		cvtColor(p->frame, frame_gray, CV_BGR2GRAY);
 		//correct the angle
-		for (size_t i = 0; i < rRects.size(); i++)
-		{
-			//cout << rRects[i].angle << " origin" << endl;
-			rRects[i].angle = int(rRects[i].angle);
-			if (rRects[i].angle<0||rRects[i].angle==-0)
-			{
-				if (rRects[i].size.width < rRects[i].size.height)
-					rRects[i].angle = -rRects[i].angle;
-				else rRects[i].angle = 90 - rRects[i].angle;
-			}
-		}
+		//for (size_t i = 0; i < rRects.size(); i++)
+		//{
+		//	//cout << rRects[i].angle << " origin" << endl;
+		//	rRects[i].angle = int(rRects[i].angle);
+		//	if (rRects[i].angle<0||rRects[i].angle==-0)
+		//	{
+		//		if (rRects[i].size.width < rRects[i].size.height)
+		//			rRects[i].angle = -rRects[i].angle;
+		//		else rRects[i].angle = 90 - rRects[i].angle;
+		//	}
+		//}
 		vector<carLoc> carSample;
 		for (size_t i = 0; i < p->cars.size(); i++)
 			carSample.push_back(carLoc(Point2f(p->cars[i].locX, p->cars[i].locY), i));
@@ -410,6 +453,7 @@ namespace CarTracker {
 				if (carSample[0].lastDis<0||dis<carSample[0].lastDis)
 				{
 					carSample[0].getDistrubed = true;
+					p->cars[idx].getMark = true;
 					locatChange(idx, mark_center.x, mark_center.y, _h);
 				}
 				//need to change the angle here***when connect is unavailable
@@ -432,6 +476,7 @@ namespace CarTracker {
 			if (!carSample[j].getDistrubed)//lost mark
 			{
 				int i = carSample[j].index;
+				p->cars[i].getMark = false;
 				if (p->cars[i].mark_flag)//first lost mark
 				{
 					double rx, ry, thelta;
@@ -463,10 +508,8 @@ namespace CarTracker {
 					thelta = (p->cars[i].dir - p->cars[i].lastdir)/360*2*CV_PI;
 					rx = p->cars[i].relativeX*cos(thelta) - p->cars[i].relativeY*sin(thelta);
 					ry = p->cars[i].relativeX*sin(thelta) + p->cars[i].relativeY*cos(thelta);
-					//locatChange(i, p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2 - rx,
-						//p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - ry, _h);
-					locatChange(i, p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2 - rx,
-						p->cars[i].locY, _h);
+					//locatChange(i, p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2 - rx,p->cars[i].rectRes.y + p->cars[i].rectRes.height / 2 - ry, _h);
+					locatChange(i, p->cars[i].rectRes.x + p->cars[i].rectRes.width / 2 - rx,p->cars[i].locY, _h);
 				}
 
 			}
@@ -549,6 +592,9 @@ namespace CarTracker {
 		 Mat roib = dst(Rect(Point(0, dst.rows / 2), Point(dst.cols, dst.rows)));
 		p->frame = frame;
 
+		currentframe++;
+		cout << "currentFrame: "<<currentframe << endl;
+
 		if (_waitRegCar.size()>0&&registedCarInRect(_waitRegCar[0].regRect,_h))
 		{
 			_waitRegCar[0].tryRegtime++;
@@ -589,7 +635,7 @@ namespace CarTracker {
 		  track.copyTo(roib);
 		// imshow("dst", dst);
 		imshow("frmCp", frmCp);
-		imshow("track", track);
+		//imshow("track", track);
         //Mat &frame = frames[0];
         //std::vector<cv::RotatedRect> res = p->tracker.process(frame,"STC");
 
@@ -607,9 +653,27 @@ namespace CarTracker {
         //}
 		for (size_t i = 0; i < p->cars.size(); i++)
 		{
-			p->_Cars[i].locX = p->cars[i].locX;
-			p->_Cars[i].locY = p->cars[i].locY;
-			p->_Cars[i].dir = p->cars[i].dir;
+			if (p->cars[i].locatHis.size()>3)
+			{
+				float nowLocX = p->cars[i].locX;
+				float nowLocY = p->cars[i].locY;
+				float lastLocX = p->_Cars[i].locX;
+				float lastLocY = p->_Cars[i].locY;
+				double disChange = sqrt((nowLocX - lastLocX)*(nowLocX - lastLocX) +
+					(nowLocY - lastLocY)*(nowLocY - lastLocY));
+				if (disChange>minMoveTakeEffectDis)
+				{
+					p->_Cars[i].locX = p->cars[i].locX;
+					p->_Cars[i].locY = p->cars[i].locY;
+					p->_Cars[i].dir = p->cars[i].dir;
+				}
+			}
+			else
+			{
+				p->_Cars[i].locX = p->cars[i].locX;
+				p->_Cars[i].locY = p->cars[i].locY;
+				p->_Cars[i].dir = p->cars[i].dir;
+			}
 		}
 
 		*out = &p->_Cars;
